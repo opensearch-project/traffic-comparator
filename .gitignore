@@ -1,0 +1,9 @@
+.coverage
+coverage.xml
+.idea
+.DS_Store
+.venv
+__pycache__
+*.egg-info*
+.python-version
+.code-workspace
