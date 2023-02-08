@@ -62,8 +62,12 @@ class BasicCorrectnessReport(BaseReport):
                 f.write('=' * 40)
                 f.write("\n")
                 # Write each response to a json and split the lines (necessary input format for difflib)
-                primary_response_lines = json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
-                shadow_response_lines = json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
+                primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
+                                          f"Headers: {comp.primary_response.headers}"] + \
+                    json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
+                shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
+                                         f"Headers: {comp.shadow_response.headers}"] + \
+                    json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
 
                 result = list(d.compare(primary_response_lines, shadow_response_lines))
                 f.write("\n".join(result))

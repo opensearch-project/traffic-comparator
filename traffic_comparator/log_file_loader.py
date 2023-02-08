@@ -1,9 +1,9 @@
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Type, Optional
-import re
+from typing import Optional, Type
 
 from traffic_comparator.data import (Request, RequestResponsePair,
                                      RequestResponseStream, Response)
@@ -36,13 +36,13 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
     Each line of the file contains a JSON that should look like:
     {
       "request": {
-        "timestamp": XYZ,
+        "timestamp": 123456789,  # (unix epoch time)
         "uri": XYZ,
         "headers": XYZ,
         "body": XYZ
       },
       "response": {
-        "timestamp": ABC,
+        "response_time_ms": 456,  # milliseconds between the request and the response
         "status_code": ABC
         "headers": ABC,
         "body": ABC

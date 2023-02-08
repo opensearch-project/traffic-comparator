@@ -2,7 +2,7 @@ import click
 import typing
 import logging
 
-from traffic_comparator.load_config_file import load_config_file
+from traffic_comparator.config_file_loader import load_config_file
 from traffic_comparator.data_loader import DataLoader
 from traffic_comparator.analyzer import Analyzer
 
@@ -26,14 +26,14 @@ def run(config_file: typing.TextIO, verbose: bool):
     analyzer = Analyzer(data_loader)
     analyzer.analyze()
     
-    for report in config["reports"]:
-        report_name = report["report_name"]
-        if report["display"]:
+    for report in config.reports:
+        report_name = report.report_name
+        if report.display:
             click.echo(f"{report_name}:\n")
             click.echo(analyzer.generate_report(report_name))
             click.echo()
-        if "export_filename" in report:
-            export_filename = report["export_filename"]
+        if report.export_filename is not None:
+            export_filename = report.export_filename
             click.echo(f"{report_name} was exported to {export_filename}")
             analyzer.generate_report(report_name, export=True, export_filename=export_filename)
 
