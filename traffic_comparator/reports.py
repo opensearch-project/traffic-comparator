@@ -1,7 +1,7 @@
 import difflib
 import json
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, IO
 
 from traffic_comparator.response_comparison import ResponseComparison
 
@@ -23,7 +23,7 @@ class BaseReport(ABC):
         pass
 
     @abstractmethod
-    def export(self, output_filepath: str) -> None:
+    def export(self, output_file: IO) -> None:
         pass
 
 
@@ -43,32 +43,30 @@ class BasicCorrectnessReport(BaseReport):
     {self._number_identical} were identical, for a match rate of {self._percent_matching}
     """
 
-    def export(self, output_filepath: str) -> None:
+    def export(self, output_file: IO) -> None:
         # I'm using the DeepDiff library to generate diffs, but difflib (from the stdlib) to display them.
         # This is fine for now, but it may be better to synchronize them down the line.
-         
-        d = difflib.Differ()
-        
-        # Do some error handling here.
-        with open(output_filepath, 'w') as f:
-            # Write the CLI output at the top of the file.
-            f.write(str(self))
-            f.write("\n")
-            
-            # Write each non-matching comparison
-            for comp in self._response_comparisons:
-                if comp.is_identical():
-                    continue
-                f.write('=' * 40)
-                f.write("\n")
-                # Write each response to a json and split the lines (necessary input format for difflib)
-                primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
-                                          f"Headers: {comp.primary_response.headers}"] + \
-                    json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
-                shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
-                                         f"Headers: {comp.shadow_response.headers}"] + \
-                    json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
 
-                result = list(d.compare(primary_response_lines, shadow_response_lines))
-                f.write("\n".join(result))
-                f.write("\n")
+        d = difflib.Differ()
+
+        # Write the CLI output at the top of the file.
+        output_file.write(str(self))
+        output_file.write("\n")
+
+        # Write each non-matching comparison
+        for comp in self._response_comparisons:
+            if comp.is_identical():
+                continue
+            output_file.write('=' * 40)
+            output_file.write("\n")
+            # Write each response to a json and split the lines (necessary input format for difflib)
+            primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
+                                      f"Headers: {comp.primary_response.headers}"] + \
+                json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
+            shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
+                                     f"Headers: {comp.shadow_response.headers}"] + \
+                json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
+
+            result = list(d.compare(primary_response_lines, shadow_response_lines))
+            output_file.write("\n".join(result))
+            output_file.write("\n")

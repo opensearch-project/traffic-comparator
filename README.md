@@ -1,6 +1,6 @@
 # Opensearch Traffic Comparator
 
-The Traffic Comparator can be used to compare traffic streams of mirrored requests to two opensearch clusters. THe tool matches up requests (if necessary) and then compares the responses and shows defferences in "correctness" (content of the response) and performance.
+The Traffic Comparator can be used to compare traffic streams of mirrored requests to two opensearch clusters. The tool matches up requests (if necessary) and then compares the responses and shows defferences in "correctness" (content of the response) and performance.
 
 ## Security
 

@@ -3,6 +3,7 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from enum import Enum
+from pathlib import Path
 from typing import Optional, Type
 
 from traffic_comparator.data import (Request, RequestResponsePair,
@@ -22,7 +23,7 @@ class LogFileFormat(Enum):
 
 
 class BaseLogFileLoader(ABC):
-    def __init__(self, log_file_path: str) -> None:
+    def __init__(self, log_file_path: Path) -> None:
         self.log_file_path = log_file_path
 
     @abstractmethod

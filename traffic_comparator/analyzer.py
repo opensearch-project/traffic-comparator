@@ -1,7 +1,7 @@
 import inspect
 import logging
 import sys
-from typing import Dict, Type, Optional
+from typing import Dict, Type, Optional, IO
 
 import traffic_comparator.reports
 from traffic_comparator.data import RequestResponseStream
@@ -110,7 +110,7 @@ class Analyzer:
         assert cls._available_reports is not None
         return {name: report.__doc__ for name, report in cls._available_reports.items()}
 
-    def generate_report(self, report_name: str, export=False, export_filename="exported_data.txt"):
+    def generate_report(self, report_name: str, export=False, export_file: Optional[IO] = None):
         if report_name in self._computed_reports:
             report = self._computed_reports[report_name]
         else:
@@ -126,7 +126,7 @@ class Analyzer:
             report.compute()
             self._computed_reports[report_name] = report
         
-        if export:
-            report.export(output_filepath=export_filename)
+        if export and export_file:
+            report.export(output_file=export_file)
         else:
             return str(report)

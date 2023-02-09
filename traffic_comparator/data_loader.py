@@ -1,31 +1,27 @@
 import logging
+from pathlib import Path
 
 from traffic_comparator.data import RequestResponseStream
 from traffic_comparator.log_file_loader import (LogFileFormat,
                                                 UnknownLogFileFormatException,
                                                 getLogFileLoader)
-from traffic_comparator.config_file_loader import Config
 
 logger = logging.getLogger(__name__)
 
-LOG_FILE_FORMAT_KEY = "log_file_format"
-PRIMARY_LOG_FILE_KEY = "primary_log"
-SHADOW_LOG_FILE_KEY = "shadow_log"
-
 
 class DataLoader:
-    def __init__(self, config: Config) -> None:
+    def __init__(self, primary_log_file: Path, shadow_log_file: Path, log_file_format: str) -> None:
         # Determine the file format (from config file) and find a matching file loader class.
         try:
-            self.log_file_format = LogFileFormat(config.log_file_format)
+            self.log_file_format = LogFileFormat(log_file_format)
         except ValueError as e:
-            raise UnknownLogFileFormatException(config.log_file_format, e)
+            raise UnknownLogFileFormatException(log_file_format, e)
         self.log_file_loader = getLogFileLoader(self.log_file_format)
         logger.debug(f"Log file loader found for filetype {self.log_file_format}.")
 
         # Find the primary and shadow log file paths from the config file.
-        self.primary_log_file = config.primary_log_file
-        self.shadow_log_file = config.shadow_log_file
+        self.primary_log_file = primary_log_file
+        self.shadow_log_file = shadow_log_file
 
         # Instantiate log file loaders for each log files.
         self.primary_log_loader = self.log_file_loader(self.primary_log_file)
