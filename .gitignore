@@ -6,4 +6,4 @@ coverage.xml
 __pycache__
 *.egg-info*
 .python-version
-.code-workspace
+*.code-workspace
