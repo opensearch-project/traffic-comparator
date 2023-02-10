@@ -1,25 +1,15 @@
-import inspect
 import logging
-import sys
-from typing import Dict, Type, Optional, IO
+from typing import List, Tuple
 
-import traffic_comparator.reports
-from traffic_comparator.data import RequestResponseStream
+from traffic_comparator.data import RequestResponseStream, RequestResponsePair
 from traffic_comparator.data_loader import DataLoader
+from traffic_comparator.log_file_loader import LogFileFormat
 from traffic_comparator.response_comparison import ResponseComparison
 
 logger = logging.getLogger(__name__)
 
 
-class UnsupportedReportTypeException(Exception):
-    def __init__(self, report_name, original_exception) -> None:
-        super().__init__(f"The report type '{report_name}' is unknown or unavailable. "
-                         f"Details: {str(original_exception)}")
-
-
 class Analyzer:
-    _available_reports: Optional[Dict[str, Type[traffic_comparator.reports.BaseReport]]] = None
-    
     def __init__(self, dataLoader: DataLoader) -> None:
         self._primary_stream: RequestResponseStream = dataLoader.primary_data_stream
         self._shadow_stream: RequestResponseStream = dataLoader.shadow_data_stream
@@ -27,10 +17,9 @@ class Analyzer:
         logger.info(f"Analyzer initialized with primary data stream of {len(self._primary_stream)} items and "
                     f"shadow data stream of {len(self._shadow_stream)} items.")
 
-        self._correlate_data_streams()
-        self._find_available_reports()
-
-        self._computed_reports = {}
+        # Some data formats may come already correlated, but haproxy-jsons are not one of them.
+        if dataLoader.log_file_format == LogFileFormat.HAPROXY_JSONS:
+            self._correlated_data = False
 
     def _correlate_data_streams(self) -> None:
         """
@@ -76,57 +65,22 @@ class Analyzer:
         logger.info(f"Correlating streams finished with {uncorrelated_primary_reqs_count} uncorrelated primary "
                     f"requests and {len(uncorrelated_shadow_pairs)} uncorrelated shadow requests.")
         
-    def analyze(self) -> None:
+    def analyze(self) -> Tuple[List[ResponseComparison], List[RequestResponsePair]]:
         """
         Run through each correlated pair of requests and compare the responses.
         """
-        self.comparisons = []
+        # The comparisons can't be created until the requests are correlated, so that's a pre-req to analyzing if it
+        # didn't happen when the data was loaded.
+        if not self._correlated_data:
+            self._correlate_data_streams()
+
+        comparisons = []
+        skipped_requests = []
         for primary_pair in self._primary_stream:
-            # Right now I'm only dealing with primary requests that have a corresponding request,
-            # and skipping the rest. I should maybe also highlight the ones that don't have a match.
             if primary_pair.corresponding_pair is not None:
-                self.comparisons.append(ResponseComparison(primary_pair.response,
-                                                           primary_pair.corresponding_pair.response))
-        logger.info(f"{len(self.comparisons)} comparisons generated.")
-        logger.debug(self.comparisons)
-
-    @classmethod
-    def _find_available_reports(cls) -> None:
-        # This is essentially the discovery mechanism for report plugins. New report options can be
-        # added to the reports module (currently just a single file) and will be discovered here.
-
-        report_module = "traffic_comparator.reports"
-        base_report = traffic_comparator.reports.BaseReport
-        cls._available_reports = {name: obj for name, obj in inspect.getmembers(sys.modules[report_module])
-                                  if inspect.isclass(obj) and issubclass(obj, base_report) and obj is not base_report}
-        logger.info(f"Reports found: {list(cls._available_reports.keys())}")
-
-    @classmethod
-    def available_reports(cls) -> Dict[str, Optional[str]]:
-        if cls._available_reports is None:
-            cls._find_available_reports()
-
-        # This satisfies the type checker that we can move forward.
-        assert cls._available_reports is not None
-        return {name: report.__doc__ for name, report in cls._available_reports.items()}
-
-    def generate_report(self, report_name: str, export=False, export_file: Optional[IO] = None):
-        if report_name in self._computed_reports:
-            report = self._computed_reports[report_name]
-        else:
-            if self._available_reports is None:
-                self._find_available_reports()
-            # This satisfies the type checker that we can move forward.
-            assert self._available_reports is not None
-            try:
-                report_class = self._available_reports[report_name]
-            except KeyError as e:
-                raise UnsupportedReportTypeException(report_name, e)
-            report = report_class(self.comparisons)
-            report.compute()
-            self._computed_reports[report_name] = report
-        
-        if export and export_file:
-            report.export(output_file=export_file)
-        else:
-            return str(report)
+                comparisons.append(ResponseComparison(primary_pair.response,
+                                                      primary_pair.corresponding_pair.response))
+            else:
+                skipped_requests.append(primary_pair)
+        logger.info(f"{len(comparisons)} comparisons generated.")
+        return comparisons, skipped_requests

@@ -86,6 +86,7 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
         response.timestamp = responsedata.get('timestamp')
         response.statuscode = responsedata.get('status_code')
         response.headers = responsedata.get('headers')
+        response.latency = responsedata.get('response_time_ms')
         raw_response_body = responsedata.get('body')
         try:
             response.body = json.loads(raw_response_body)
@@ -94,7 +95,7 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
             response.body = raw_response_body
 
         # Need to do something with the timstamps so that they're subtractable
-        return RequestResponsePair(request, response, latency=responsedata.get('response_time_ms'))
+        return RequestResponsePair(request, response)
     
     def load(self) -> RequestResponseStream:
         pairs: RequestResponseStream = []

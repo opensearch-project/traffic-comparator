@@ -1,14 +1,17 @@
-import click
-from typing import List, Tuple, IO
 import logging
 from pathlib import Path
+from typing import IO, List, Tuple
 
-from traffic_comparator.data_loader import DataLoader
+import click
+
 from traffic_comparator.analyzer import Analyzer
+from traffic_comparator.data_loader import DataLoader
+from traffic_comparator.report_generator import ReportGenerator
 
 
 # Click is a python library that streamlines creating command line interfaces
 # in a more composable & readable way than argparse.
+# https://click.palletsprojects.com/en/8.1.x/api/
 # This line sets up a group of cli entrypoints -- currently the commands available
 # are `run` and `available_reports`.
 @click.group()
@@ -37,22 +40,22 @@ def run(primary_log_file: Path, shadow_log_file: Path, log_file_format: str,
 
     data_loader = DataLoader(primary_log_file, shadow_log_file, log_file_format)
     analyzer = Analyzer(data_loader)
-    analyzer.analyze()
+    report_generator = ReportGenerator(*analyzer.analyze())
 
     # Print summary reports to stdout
     for report in display_reports:
         click.echo(f"{report}:\n")
-        click.echo(analyzer.generate_report(report))
+        click.echo(report_generator.generate(report))
         click.echo()
 
     # Write exported reports to file
     for report, export_file in export_reports:
-        analyzer.generate_report(report, export=True, export_file=export_file)
+        report_generator.generate(report, export=True, export_file=export_file)
         click.echo(f"{report} was exported to {export_file.name}")
 
 
 @cli.command()
 def available_reports():
-    reports = Analyzer.available_reports()
+    reports = ReportGenerator.available_reports()
     for report, description in reports.items():
         click.echo(f"{report}: {description}")

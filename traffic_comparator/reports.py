@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import List, IO
 
 from traffic_comparator.response_comparison import ResponseComparison
+from traffic_comparator.data import RequestResponsePair
 
 
 class BaseReport(ABC):
@@ -11,8 +12,10 @@ class BaseReport(ABC):
     of the report, as well as information on a potential outputted file (format, etc.) and any additional config
     or parameters to be provided.
     """
-    def __init__(self, response_comparisons: List[ResponseComparison]):
+    def __init__(self, response_comparisons: List[ResponseComparison], uncompared_requests: List[RequestResponsePair]):
         self._response_comparisons = response_comparisons
+        self._uncompared_requests = uncompared_requests
+        self._computed = False
     
     @abstractmethod
     def compute(self) -> None:
@@ -35,15 +38,27 @@ class BasicCorrectnessReport(BaseReport):
     def compute(self) -> None:
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.is_identical() for comp in self._response_comparisons])
-        self._percent_matching = 1.0 * self._number_identical / self._total_comparisons
+        if self._total_comparisons != 0:
+            self._percent_matching = 1.0 * self._number_identical / self._total_comparisons
+        else:
+            self._percent_matching = 0
+        self._number_skipped = len(self._uncompared_requests)
+        self._computed = True
 
     def __str__(self) -> str:
+        if not self._computed:
+            self.compute()
+
         return f"""
     {self._total_comparisons} responses were compared.
     {self._number_identical} were identical, for a match rate of {self._percent_matching}
+    {self._number_skipped} requests from the primary cluster were not matched with a request from the s
     """
 
     def export(self, output_file: IO) -> None:
+        if not self._computed:
+            self.compute()
+
         # I'm using the DeepDiff library to generate diffs, but difflib (from the stdlib) to display them.
         # This is fine for now, but it may be better to synchronize them down the line.
 

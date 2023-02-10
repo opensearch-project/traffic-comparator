@@ -23,18 +23,22 @@ class Request:
 
 @dataclass
 class Response:
-    timestamp: Optional[int] = None
+    timestamp: Optional[int] = None  # int in epoch seconds format
     statuscode: Optional[int] = None
     headers: Optional[str] = None
     body: Union[dict, str, None] = None
+    latency: Optional[int] = None  # Latency in ms
 
 
 @dataclass
 class RequestResponsePair:
     request: Request
     response: Response
-    latency: Optional[int] = None  # Latency in ms
     corresponding_pair: Optional[RequestResponsePair] = None
+
+    @property
+    def latency(self):
+        return self.response.latency
 
 
 RequestResponseStream: TypeAlias = List[RequestResponsePair]
