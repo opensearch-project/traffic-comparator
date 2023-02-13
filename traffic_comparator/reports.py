@@ -88,14 +88,17 @@ class BasicCorrectnessReport(BaseReport):
 
 
 class PerformanceReport(BaseReport):
-    """Provides basic performance data
+    """Provides basic performance data including: average, median, p90 and p99 latencies.
+    Exported file also lists all latencies for recorded responses for primary and shadow clusters.
     """
     def compute(self) -> None:
-        self._prim_latencies = []
+        self._primary_latencies = []
         self._shadow_latencies = []
         for resp in self._response_comparisons:
-            self._prim_latencies.append(resp.primary_response.latency)
-            self._shadow_latencies.append(resp.shadow_response.latency)
+            if resp.primary_response.latency > 0:
+                self._primary_latencies.append(resp.primary_response.latency)
+            if resp.shadow_response.latency > 0:
+                self._shadow_latencies.append(resp.shadow_response.latency)
 
         self._computed = True
 
@@ -108,16 +111,16 @@ class PerformanceReport(BaseReport):
 
         return f"""
             ==Stats for primary cluster==
-    99th percentile = {np.percentile(self._prim_latencies, 99)}
-    90th percentile = {np.percentile(self._prim_latencies, 90)}
-    50th percentile = {np.percentile(self._prim_latencies, 50)}
-    Average Latency = {np.average(self._prim_latencies)}
+    99th percentile = {'%.1f' % np.percentile(self._primary_latencies, 99)}
+    90th percentile = {'%.1f' % np.percentile(self._primary_latencies, 90)}
+    50th percentile = {'%.1f' % np.percentile(self._primary_latencies, 50)}
+    Average Latency = {'%.1f' % np.average(self._primary_latencies)}
     
             ==Stats for shadow cluster==
-    99th percentile = {np.percentile(self._shadow_latencies, 99)}
-    90th percentile = {np.percentile(self._shadow_latencies, 90)}
-    50th percentile = {np.percentile(self._shadow_latencies, 50)}
-    Average Latency = {np.average(self._shadow_latencies)}
+    99th percentile = {'%.1f' % np.percentile(self._shadow_latencies, 99)}
+    90th percentile = {'%.1f' % np.percentile(self._shadow_latencies, 90)}
+    50th percentile = {'%.1f' % np.percentile(self._shadow_latencies, 50)}
+    Average Latency = {'%.1f' % np.average(self._shadow_latencies)}
     """
 
     def export(self, output_file: IO) -> None:
@@ -127,7 +130,7 @@ class PerformanceReport(BaseReport):
         output_file.write("\n")
         #For now, this is only exporting the basic performance data and lists all latencies recorded on each cluster
         output_file.write("All Primary Cluster Latencies: \n")
-        for lat in self._prim_latencies:
+        for lat in self._primary_latencies:
             output_file.write(repr(lat) + " ")
 
         output_file.write("\n")
