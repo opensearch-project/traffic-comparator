@@ -38,10 +38,14 @@ class BasicCorrectnessReport(BaseReport):
     def compute(self) -> None:
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.is_identical() for comp in self._response_comparisons])
+        self._statuses_identical = sum([comp.primary_response.statuscode == comp.shadow_response.statuscode
+                                        for comp in self._response_comparisons])
         if self._total_comparisons != 0:
             self._percent_matching = 1.0 * self._number_identical / self._total_comparisons
+            self._percent_statuses_matching = 1.0 * self._statuses_identical / self._total_comparisons
         else:
             self._percent_matching = 0
+            self._percent_statuses_matching = 0
         self._number_skipped = len(self._uncompared_requests)
         self._computed = True
 
@@ -51,8 +55,9 @@ class BasicCorrectnessReport(BaseReport):
 
         return f"""
     {self._total_comparisons} responses were compared.
-    {self._number_identical} were identical, for a match rate of {self._percent_matching}
-    {self._number_skipped} requests from the primary cluster were not matched with a request from the s
+    {self._number_identical} were identical, for a match rate of {self._percent_matching:.2%}
+    The status codes matched in {self._percent_statuses_matching:.2%} of responses.
+    {self._number_skipped} requests from the primary cluster were not matched with a request from the shadow cluster.
     """
 
     def export(self, output_file: IO) -> None:
@@ -70,17 +75,30 @@ class BasicCorrectnessReport(BaseReport):
 
         # Write each non-matching comparison
         for comp in self._response_comparisons:
-            if comp.is_identical():
+            if comp.is_identical() or comp.primary_response.body == "" or comp.shadow_response.body == "":
                 continue
             output_file.write('=' * 40)
             output_file.write("\n")
             # Write each response to a json and split the lines (necessary input format for difflib)
-            primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
-                                      f"Headers: {comp.primary_response.headers}"] + \
-                json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
-            shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
-                                     f"Headers: {comp.shadow_response.headers}"] + \
-                json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
+            if isinstance(comp.primary_response.body, str) or \
+                isinstance(comp.shadow_response.body, str) or \
+                    comp.primary_response.body is None or \
+                    comp.shadow_response.body is None:
+                primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
+                                          f"Headers: {comp.primary_response.headers}",
+                                          f"Body:{type(comp.primary_response.body)} {comp.primary_response.body!s:.80}"]
+                shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
+                                         f"Headers: {comp.shadow_response.headers}",
+                                         f"Body:{type(comp.shadow_response.body)} {comp.shadow_response.body!s:.80}"]
+            else:
+                primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
+                                          f"Headers: {comp.primary_response.headers}",
+                                          "Body:"] + \
+                    json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
+                shadow_response_lines = [f"Status code: {comp.shadow_response.statuscode}",
+                                         f"Headers: {comp.shadow_response.headers}",
+                                         "Body:"] + \
+                    json.dumps(comp.shadow_response.body, sort_keys=True, indent=4).splitlines()
 
             result = list(d.compare(primary_response_lines, shadow_response_lines))
             output_file.write("\n".join(result))

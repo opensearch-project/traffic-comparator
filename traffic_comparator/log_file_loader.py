@@ -62,6 +62,15 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
             return dict([s.split(':') for s in rawheaders.split('\r\n') if len(s) > 3])
         except Exception:
             return rawheaders
+
+    def parseBody(self, rawbody: str) -> Union[dict, str, None]:
+        if rawbody == '-' or rawbody == '\x1f\x08':
+            return None
+        try:
+            return json.loads(rawbody)
+        except json.JSONDecodeError:
+            logger.debug(f"Response body could not be parsed as JSON: {rawbody}")
+        return rawbody
     
     def parseLine(self, line) -> Optional[RequestResponsePair]:
         request = Request()
@@ -82,33 +91,14 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
         request.uri = requestdata.get('uri')
         request.http_method = requestdata.get('method')
         request.headers = self.parseHeaders(requestdata.get('headers'))
-        raw_request_body = requestdata.get('body')
-        try:
-            request.body = json.loads(raw_request_body)
-        except json.JSONDecodeError:
-            if raw_request_body != '-':
-                logger.debug(f"Request body could not be parsed as JSON: {raw_request_body}")
-                logger.debug(requestdata)
-            request.body = raw_request_body
+        request.body = self.parseBody(requestdata.get('body'))
 
         response.timestamp = responsedata.get('timestamp')
         response.statuscode = responsedata.get('status_code')
         response.headers = self.parseHeaders(responsedata.get('headers'))
-        
+        response.body = self.parseBody(responsedata.get('body'))
         response.latency = responsedata.get('response_time_ms')
-        raw_response_body = responsedata.get('body')
-        try:
-            response.body = json.loads(raw_response_body)
-        except json.JSONDecodeError:
-            if raw_response_body != '-' and raw_response_body != '\x1f\x08':
-                logger.debug(f"Response body could not be parsed as JSON: {raw_response_body}")
-                logger.debug(responsedata)
-                # if raw_response_body == '\x1f\x08':
-                #     logger.debug("Corresponding request: ")
-                #     logger.debug(requestdata)
-            response.body = raw_response_body
 
-        # Need to do something with the timstamps so that they're subtractable
         return RequestResponsePair(request, response)
     
     def load(self) -> RequestResponseStream:
