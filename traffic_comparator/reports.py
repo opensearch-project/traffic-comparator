@@ -52,7 +52,7 @@ class BasicCorrectnessReport(BaseReport):
         return f"""
     {self._total_comparisons} responses were compared.
     {self._number_identical} were identical, for a match rate of {self._percent_matching}
-    {self._number_skipped} requests from the primary cluster were not matched with a request from the s
+    {self._number_skipped} request(s) from the primary cluster were not matched with a request from the shadow cluster
     """
 
     def export(self, output_file: IO) -> None:

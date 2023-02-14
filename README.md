@@ -42,34 +42,44 @@ The `trafficcomparator` command is installed as a command on your machine (make 
 pip install --editable .
 ```
 
-Run the TC framework with the `trafficcomparator` command, and a config file that specifies a file for each cluster's traffic. For example:
+Run the TC framework with the `trafficcomparator` command. It requires several command line options: the paths to the primary and shadow log files and the format of the log files. Optionally, you can specify a list of reports to display, and a list of reports to export to a file, followed by the file names for each export. See the documentation for more information:
 ```
-trafficcomparator run --config test_config.json
+$ trafficcomparator run --help
+
+Usage: trafficcomparator run [OPTIONS]
+
+Options:
+  --primary-log-file PATH         Path to the log file from the primary
+                                  cluster.  [required]
+  --shadow-log-file PATH          Path to the log file from the shadow
+                                  cluster.  [required]
+  --log-file-format TEXT          Specification for the log file format (must
+                                  be supported by a LogFileLoader).
+                                  [required]
+  --display-reports TEXT          A list of reports that should be printed (in
+                                  a summary form) to stdout.
+  --export-reports <TEXT FILENAME>...
+                                  A list of reports to export and the file
+                                  path to export it to. This can be '-' for
+                                  stdout.
+  -v, --verbose
+  --help                          Show this message and exit.
+```
+
+For example:
+```
+$ trafficcomparator run --primary-log-file test_primary_logs.log --shadow-log-file test_shadow_logs.log --log-file-format haproxy-jsons --display-reports BasicCorrectnessReport
+BasicCorrectnessReport:
+
+    5 responses were compared.
+    4 were identical, for a match rate of 0.8
+    1 request(s) from the primary cluster were not matched with a request from the shadow cluster
+
 ```
 
 You can also get descriptions of the available reports with:
 ```
 trafficcomparator available-reports
-```
-
-#### Config File Format
-There are various required and optional config file fields.
-```
-{
-    "primary_log": "The path to the log file from the primary cluster -- required.",
-    "shadow_log": "The path to the log file from the shadow cluster -- required.",
-    "log_file_format": "The descriptor for the file format of the log files. Required. Currently the only option is "haproxy-jsons" but more may be supported in the future.",
-
-    # Reports is an optional field that should contain a list of report specifications.
-    # If no reports are specified, there will be no output.
-    "reports": [
-        {
-            "report_name": "The name of a report that's available to the analyzer.",
-            "export_filename": "Optional. If you'd like the report written to a file, provide a filepath here. If this param is not present, nothing will be written to a file.",
-            "display": "True or false, this is a required param for whether you'd like a summary of the report printed to the console."
-        }
-    ]
-}
 ```
 
 ## Working on the Traffic Comparator
