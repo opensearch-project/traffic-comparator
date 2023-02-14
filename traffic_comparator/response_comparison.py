@@ -36,5 +36,4 @@ class ResponseComparison:
         return self._body_diff
 
     def is_identical(self):
-        logger.debug(f"Identical?: {self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}}")
         return self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}

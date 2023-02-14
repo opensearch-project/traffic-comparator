@@ -4,7 +4,7 @@ import re
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional, Type, Union
 
 from traffic_comparator.data import (Request, RequestResponsePair,
                                      RequestResponseStream, Response)
@@ -56,6 +56,12 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
     and some lines may not have a request/response log at all.
     """
     log_extractor = re.compile(r"[\w\s\:\[\]]+\:\s(\{.*\})$", flags=re.DOTALL)
+
+    def parseHeaders(self, rawheaders: str) -> Union[dict, str]:
+        try:
+            return dict([s.split(':') for s in rawheaders.split('\r\n') if len(s) > 3])
+        except Exception:
+            return rawheaders
     
     def parseLine(self, line) -> Optional[RequestResponsePair]:
         request = Request()
@@ -75,23 +81,31 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
         request.timestamp = requestdata.get('timestamp')
         request.uri = requestdata.get('uri')
         request.http_method = requestdata.get('method')
-        request.headers = requestdata.get('headers')
+        request.headers = self.parseHeaders(requestdata.get('headers'))
         raw_request_body = requestdata.get('body')
         try:
             request.body = json.loads(raw_request_body)
         except json.JSONDecodeError:
-            logger.debug(f"Request body could not be parsed as JSON: {request.body}")
+            if raw_request_body != '-':
+                logger.debug(f"Request body could not be parsed as JSON: {raw_request_body}")
+                logger.debug(requestdata)
             request.body = raw_request_body
 
         response.timestamp = responsedata.get('timestamp')
         response.statuscode = responsedata.get('status_code')
-        response.headers = responsedata.get('headers')
+        response.headers = self.parseHeaders(responsedata.get('headers'))
+        
         response.latency = responsedata.get('response_time_ms')
         raw_response_body = responsedata.get('body')
         try:
             response.body = json.loads(raw_response_body)
         except json.JSONDecodeError:
-            logger.debug(f"Response body could not be parsed as JSON: {response.body}")
+            if raw_response_body != '-' and raw_response_body != '\x1f\x08':
+                logger.debug(f"Response body could not be parsed as JSON: {raw_response_body}")
+                logger.debug(responsedata)
+                # if raw_response_body == '\x1f\x08':
+                #     logger.debug("Corresponding request: ")
+                #     logger.debug(requestdata)
             response.body = raw_response_body
 
         # Need to do something with the timstamps so that they're subtractable

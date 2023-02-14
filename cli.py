@@ -33,10 +33,11 @@ def cli():
 @click.option('-v', '--verbose', count=True)
 def run(primary_log_file: Path, shadow_log_file: Path, log_file_format: str,
         display_reports: List[str], export_reports: List[Tuple[str, IO]], verbose: int):
+    print(verbose)
     if verbose == 1:
-        logging.getLogger().setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO)
     if verbose == 2:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
 
     data_loader = DataLoader(primary_log_file, shadow_log_file, log_file_format)
     analyzer = Analyzer(data_loader)
