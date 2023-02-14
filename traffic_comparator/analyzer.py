@@ -10,10 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class Analyzer:
-    def __init__(self, dataLoader: DataLoader, relaxed_matching: bool = False) -> None:
+    def __init__(self, dataLoader: DataLoader) -> None:
         self._primary_stream: RequestResponseStream = dataLoader.primary_data_stream
         self._shadow_stream: RequestResponseStream = dataLoader.shadow_data_stream
-        self._relaxed_matching = relaxed_matching
 
         logger.info(f"Analyzer initialized with primary data stream of {len(self._primary_stream)} items and "
                     f"shadow data stream of {len(self._shadow_stream)} items.")
@@ -52,17 +51,9 @@ class Analyzer:
                 # Ignore responses without a timestamp. Maybe I should just make this a required field?
                 if shadow_request.timestamp is None:
                     continue
-                match = False
-                if self._relaxed_matching and \
-                        primary_request.uri == shadow_request.uri and \
-                        primary_request.http_method == shadow_request.http_method and \
+
+                if primary_request.equivalent_to(shadow_request) and \
                         primary_request.timestamp <= shadow_request.timestamp:
-                    match = True
-                elif primary_request.equivalent_to(shadow_request) and \
-                        primary_request.timestamp <= shadow_request.timestamp:
-                    match = True
-                    
-                if match:
                     uncorrelated_shadow_pairs.remove(shadow_pair)
                     shadow_pair.corresponding_pair = primary_pair
                     primary_pair.corresponding_pair = shadow_pair

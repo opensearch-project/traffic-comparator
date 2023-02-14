@@ -30,19 +30,16 @@ def cli():
               help="A list of reports that should be printed (in a summary form) to stdout.")
 @click.option("--export-reports", type=click.Tuple([str, click.File('w')]), multiple=True,
               help="A list of reports to export and the file path to export it to. This can be '-' for stdout.")
-@click.option("--relaxed-matching", is_flag=True, default=False,
-              help="Relax the matching requirements to correlate requests from each cluster.")
 @click.option('-v', '--verbose', count=True)
 def run(primary_log_file: Path, shadow_log_file: Path, log_file_format: str,
-        display_reports: List[str], export_reports: List[Tuple[str, IO]], relaxed_matching: bool,
-        verbose: int):
+        display_reports: List[str], export_reports: List[Tuple[str, IO]], verbose: int):
     if verbose == 1:
         logging.basicConfig(level=logging.INFO)
     if verbose == 2:
         logging.basicConfig(level=logging.DEBUG)
 
     data_loader = DataLoader(primary_log_file, shadow_log_file, log_file_format)
-    analyzer = Analyzer(data_loader, relaxed_matching=relaxed_matching)
+    analyzer = Analyzer(data_loader)
     report_generator = ReportGenerator(*analyzer.analyze())
 
     # Print summary reports to stdout
