@@ -8,7 +8,8 @@ setuptools.setup(
     py_modules=['traffic_comparator'],
     install_requires=[
         "Click",
-        "deepdiff"
+        "deepdiff",
+        "numpy"
     ],
     extras_require={
         'dev': ['flake8', 'pytest']
