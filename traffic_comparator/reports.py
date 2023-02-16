@@ -5,6 +5,7 @@ from typing import List, IO
 import numpy as np
 from traffic_comparator.response_comparison import ResponseComparison
 from traffic_comparator.data import RequestResponsePair
+import csv
 
 
 class BaseReport(ABC):
@@ -89,7 +90,8 @@ class BasicCorrectnessReport(BaseReport):
 
 class PerformanceReport(BaseReport):
     """Provides basic performance data including: average, median, p90 and p99 latencies.
-    Exported file also lists all latencies for recorded responses for primary and shadow clusters.
+    The exported file provides a CSV file which lists response body, latency and status code of both primary
+    and shadow cluster for to each request.
     """
     def compute(self) -> None:
         self._primary_latencies = []
@@ -124,17 +126,17 @@ class PerformanceReport(BaseReport):
     """
 
     def export(self, output_file: IO) -> None:
-        if not self._computed:
-            self.compute()
-        output_file.write(str(self))
-        output_file.write("\n")
-        #For now, this is only exporting the basic performance data and lists all latencies recorded on each cluster
-        output_file.write("All Primary Cluster Latencies: \n")
-        for lat in self._primary_latencies:
-            output_file.write(repr(lat) + " ")
-
-        output_file.write("\n")
-        output_file.write("All Shadow Cluster Latencies: \n")
-        for lat in self._shadow_latencies:
-            output_file.write(repr(lat) + " ")
-        output_file.write("\n")
+        writer = csv.writer(output_file)
+        writer.writerow(['request_uri', 'request_method',
+                         'request_body', 'primary_response_latency_ms', 'primary_response_status_code',
+                         'primary_response_body', 'shadow_response_latency_ms', 'shadow_response_status_code',
+                         'shadow_response_body'])
+        for resp in self._response_comparisons:
+            writer.writerow([resp.original_request.uri, resp.original_request.http_method,
+                            resp.original_request.body,
+                            resp.primary_response.latency,
+                            resp.primary_response.statuscode,
+                            resp.primary_response.body,
+                            resp.shadow_response.latency,
+                            resp.shadow_response.statuscode,
+                            resp.shadow_response.body])

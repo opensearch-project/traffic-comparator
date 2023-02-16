@@ -3,14 +3,16 @@ import logging
 from deepdiff import DeepDiff
 
 from traffic_comparator.data import Response
+from traffic_comparator.data import Request
 
 logger = logging.getLogger(__name__)
 
 
 class ResponseComparison:
-    def __init__(self, primary_response: Response, shadow_response: Response) -> None:
+    def __init__(self, primary_response: Response, shadow_response: Response, original_request: Request = None) -> None:
         self.primary_response = primary_response
         self.shadow_response = shadow_response
+        self.original_request = original_request
 
         # Depending on the performance of DeepDiff on large bodies, this could be pulled out.
         self._status_code_diff = DeepDiff(primary_response.statuscode, shadow_response.statuscode)
