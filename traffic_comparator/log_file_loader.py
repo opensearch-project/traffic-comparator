@@ -55,6 +55,10 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
     The line starts with something a long the lines of `Feb  1 23:05:17 localhost haproxy[20]: ` before the json
     and some lines may not have a request/response log at all.
     """
+    # This regex matches a line that starts with most characters (alphanumeric, whitespace, colon, square brackets),
+    # followed by a colon, whitespace, and then an opening curly bracket followed by anything (.*)
+    # until a closing curly bracket. Everything between the curly brackets (inclusive) is captured to
+    # be parsed as JSON.
     log_extractor = re.compile(r"[\w\s\:\[\]]+\:\s(\{.*\})$", flags=re.DOTALL)
 
     def parseHeaders(self, rawheaders: str) -> Union[dict, str]:
@@ -63,7 +67,7 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
         except Exception:
             return rawheaders
 
-    def parseBody(self, rawbody: str) -> Union[dict, str, None]:
+    def parseBodyAsJson(self, rawbody: str) -> Union[dict, str, None]:
         if rawbody == '-' or rawbody == '\x1f\x08':
             return None
         try:
@@ -91,12 +95,12 @@ class HAProxyJsonsFileLoader(BaseLogFileLoader):
         request.uri = requestdata.get('uri')
         request.http_method = requestdata.get('method')
         request.headers = self.parseHeaders(requestdata.get('headers'))
-        request.body = self.parseBody(requestdata.get('body'))
+        request.body = self.parseBodyAsJson(requestdata.get('body'))
 
         response.timestamp = responsedata.get('timestamp')
         response.statuscode = responsedata.get('status_code')
         response.headers = self.parseHeaders(responsedata.get('headers'))
-        response.body = self.parseBody(responsedata.get('body'))
+        response.body = self.parseBodyAsJson(responsedata.get('body'))
         response.latency = responsedata.get('response_time_ms')
 
         return RequestResponsePair(request, response)
