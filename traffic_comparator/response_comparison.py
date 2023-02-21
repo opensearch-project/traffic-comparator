@@ -13,6 +13,9 @@ class ResponseComparison:
         self.primary_response = primary_response
         self.shadow_response = shadow_response
         self.original_request = original_request
+        # The reason behind adding a request to be part of the
+        # response comparisons is to clarify what were these
+        # responses for.
 
         # Depending on the performance of DeepDiff on large bodies, this could be pulled out.
         self._status_code_diff = DeepDiff(primary_response.statuscode, shadow_response.statuscode)

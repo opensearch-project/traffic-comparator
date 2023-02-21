@@ -81,9 +81,6 @@ class Analyzer:
                 comparisons.append(ResponseComparison(primary_pair.response,
                                                       primary_pair.corresponding_pair.response,
                                                       primary_pair.request))
-                # The reason behind adding a request to be part of the
-                # response comparisons is to clarify what were these
-                # responses for.
             else:
                 skipped_requests.append(primary_pair)
         logger.info(f"{len(comparisons)} comparisons generated.")
