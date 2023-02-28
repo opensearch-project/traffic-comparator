@@ -249,6 +249,12 @@ LOG_FILE_LOADER_MAPPING: dict[LogFileFormat, Type[BaseLogFileLoader]] = {
 }
 
 
+IsCorrelatedFormat = {
+    LogFileFormat.HAPROXY_JSONS: False,
+    LogFileFormat.REPLAYER_TRIPLES: True
+}
+
+
 def getLogFileLoader(logFileFormat: LogFileFormat) -> Type[BaseLogFileLoader]:
     try:
         return LOG_FILE_LOADER_MAPPING[logFileFormat]

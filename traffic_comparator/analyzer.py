@@ -3,7 +3,6 @@ from typing import List, Tuple
 
 from traffic_comparator.data import RequestResponseStream, RequestResponsePair
 from traffic_comparator.data_loader import DataLoader
-from traffic_comparator.log_file_loader import LogFileFormat
 from traffic_comparator.response_comparison import ResponseComparison
 
 logger = logging.getLogger(__name__)
@@ -18,8 +17,7 @@ class Analyzer:
                     f"shadow data stream of {len(self._shadow_stream)} items.")
 
         # Some data formats may come already correlated, but haproxy-jsons are not one of them.
-        if dataLoader.log_file_format == LogFileFormat.HAPROXY_JSONS:
-            self._correlated_data = False
+        self._correlated_data = dataLoader.is_correlated
 
     def _correlate_data_streams(self) -> None:
         """
