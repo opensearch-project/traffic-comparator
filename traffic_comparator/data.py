@@ -13,7 +13,7 @@ class Request:
     timestamp: Optional[int] = None  # int in epoch seconds format
     http_method: Optional[str] = None  # could be an enum
     uri: Optional[str] = None
-    headers: Optional[str] = None  # maybe dict or list?
+    headers: Union[dict, str, None] = None  # maybe dict or list?
     body: Union[dict, str, None] = None
 
     def equivalent_to(self, other: Request):
@@ -25,7 +25,7 @@ class Request:
 class Response:
     timestamp: Optional[int] = None  # int in epoch seconds format
     statuscode: Optional[int] = None
-    headers: Optional[str] = None
+    headers: Union[dict, str, None] = None
     body: Union[dict, str, None] = None
     latency: Optional[int] = None  # Latency in ms
 

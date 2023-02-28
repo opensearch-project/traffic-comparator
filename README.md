@@ -49,10 +49,12 @@ $ trafficcomparator run --help
 Usage: trafficcomparator run [OPTIONS]
 
 Options:
-  --primary-log-file PATH         Path to the log file from the primary
-                                  cluster.  [required]
-  --shadow-log-file PATH          Path to the log file from the shadow
-                                  cluster.  [required]
+  --log-file PATH                 Path to a log file. This option is required
+                                  at least once and can be provided many
+                                  times. If the file format has seperate
+                                  primary and shadow logs, the first use
+                                  should be the primary log and the second the
+                                  shadow.  [required]
   --log-file-format TEXT          Specification for the log file format (must
                                   be supported by a LogFileLoader).
                                   [required]
@@ -68,7 +70,7 @@ Options:
 
 For example:
 ```
-$ trafficcomparator run --primary-log-file test_primary_logs.log --shadow-log-file test_shadow_logs.log --log-file-format haproxy-jsons --display-reports BasicCorrectnessReport
+$ trafficcomparator run --log-file test_primary_logs.log --log-file test_shadow_logs.log --log-file-format haproxy-jsons --display-reports BasicCorrectnessReport
 BasicCorrectnessReport:
 
     5 responses were compared.
