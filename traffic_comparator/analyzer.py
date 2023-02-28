@@ -31,7 +31,7 @@ class Analyzer:
         # (i.e. passed by reference) so we can modify them.
         uncorrelated_shadow_pairs = self._shadow_stream[:]
         uncorrelated_primary_reqs_count = 0
-        
+
         # This should go through primary requests in (roughly) sequential order.
         # They will be compared to the shadow requests--looking for an identical request at time >= t0.
         # Currently this is an O(n^2) process -- that's not sustainable! We need to either correlate at
@@ -39,7 +39,7 @@ class Analyzer:
         # Theortically, it'll be in much closer to O(N) because they should come in roughly the same order.
         for primary_pair in self._primary_stream:
             primary_request = primary_pair.request
-            
+
             # Can't match a request without a timestamp.
             if primary_request.timestamp is None:
                 continue
@@ -65,7 +65,7 @@ class Analyzer:
                              "could not find a corresponding shadow request.")
         logger.info(f"Correlating streams finished with {uncorrelated_primary_reqs_count} uncorrelated primary "
                     f"requests and {len(uncorrelated_shadow_pairs)} uncorrelated shadow requests.")
-        
+
     def analyze(self) -> Tuple[List[ResponseComparison], List[RequestResponsePair]]:
         """
         Run through each correlated pair of requests and compare the responses.
@@ -80,7 +80,8 @@ class Analyzer:
         for primary_pair in self._primary_stream:
             if primary_pair.corresponding_pair is not None:
                 comparisons.append(ResponseComparison(primary_pair.response,
-                                                      primary_pair.corresponding_pair.response))
+                                                      primary_pair.corresponding_pair.response,
+                                                      primary_pair.request))
             else:
                 skipped_requests.append(primary_pair)
         logger.info(f"{len(comparisons)} comparisons generated.")

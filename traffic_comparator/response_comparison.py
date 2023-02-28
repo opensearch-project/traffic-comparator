@@ -1,8 +1,9 @@
 import logging
+from typing import Optional
 
 from deepdiff import DeepDiff
 
-from traffic_comparator.data import Response
+from traffic_comparator.data import Response, Request
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +20,13 @@ HEADER_PATHS_TO_IGNORE = ["content-length"]
 
 
 class ResponseComparison:
-    def __init__(self, primary_response: Response, shadow_response: Response) -> None:
+    def __init__(self, primary_response: Response, shadow_response: Response,
+                 original_request: Optional[Request] = None) -> None:
         self.primary_response = primary_response
         self.shadow_response = shadow_response
+        self.original_request = original_request
+        # The reason behind adding a request to be part of the response comparisons is to clarify what request these
+        # responses were for.
 
         # Depending on the performance of DeepDiff on large bodies, this could be pulled out.
         self._status_code_diff = DeepDiff(primary_response.statuscode, shadow_response.statuscode)
