@@ -85,3 +85,54 @@ def test_WHEN_status_code_missing_THEN_comparison_succeeds():
     assert response_comparison.status_code_diff == {}
     assert response_comparison.headers_diff == {}
     assert response_comparison.body_diff == {}
+
+
+# Test the Masking Functionality
+MASKING_RESPONSE_BODY_1 = {
+    'name': 'eosu1',
+    'cluster_name': 'gcstest',
+    'cluster_uuid': 'EMacGyyZSK2KntmyWG3HgA',
+    'version': {
+        'number': '7.10.0',
+        'build_flavor': 'oss',
+        'build_type': 'deb',
+        'build_hash': '51e9d6f22758d0374a0f3f5c6e8f3a7997850f96',
+        'build_date': '2020-11-09T21:30:33.964949Z',
+        'build_snapshot': False,
+        'lucene_version': '8.7.0',
+        'minimum_wire_compatibility_version': '6.8.0',
+        'minimum_index_compatibility_version': '6.0.0-beta1'
+    },
+    'tagline': 'You Know, for Search'
+}
+
+MASKING_RESPONSE_BODY_2 = {
+    'name': '28a6a5d46dd3c08b543eb5574ab10f5f',
+    'cluster_name': '541757191419:os-service-domain',
+    'cluster_uuid': '8OoM_tpITc6q9x-WlraUbA',
+    'version': {
+        'distribution': 'opensearch',
+        'number': '1.3.2',
+        'build_type': 'tar',
+        'build_hash': 'unknown',
+        'build_date': '2022-11-15T05:29:22.155152Z',
+        'build_snapshot': False,
+        'lucene_version': '8.10.1',
+        'minimum_wire_compatibility_version': '6.8.0',
+        'minimum_index_compatibility_version': '6.0.0-beta1'
+    },
+    'tagline': 'The OpenSearch Project: https://opensearch.org/'
+}
+
+
+def test_WHEN_responses_differ_on_masked_fields_THEN_comparison_suceeds():
+    es_response = Response(headers={"content-length": 521},
+                           body=MASKING_RESPONSE_BODY_1)
+    os_response = Response(headers={'content-length': 572},
+                           body=MASKING_RESPONSE_BODY_2)
+    response_comparison = ResponseComparison(es_response, os_response)
+    print(response_comparison.body_diff)
+    assert response_comparison.status_code_diff == {}
+    assert response_comparison.headers_diff == {}
+    assert response_comparison.body_diff == {}
+    assert response_comparison.is_identical()

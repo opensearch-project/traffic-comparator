@@ -97,9 +97,9 @@ class PerformanceReport(BaseReport):
         self._primary_latencies = []
         self._shadow_latencies = []
         for resp in self._response_comparisons:
-            if resp.primary_response.latency > 0:
+            if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
-            if resp.shadow_response.latency > 0:
+            if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
 
         self._computed = True
