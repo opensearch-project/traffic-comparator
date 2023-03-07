@@ -9,9 +9,6 @@ jobs:
         python-version: ['3.10']
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: .
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -28,4 +25,4 @@ jobs:
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
         with:
-          files: traffic_comparator/coverage.xml
+          files: coverage.xml
