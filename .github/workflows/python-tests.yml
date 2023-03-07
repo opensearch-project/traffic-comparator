@@ -1,0 +1,28 @@
+name: python-tests
+
+on: [push, pull_request]
+
+jobs:
+  test-linux:
+    strategy:
+      matrix:
+        python-version: ['3.10']
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Dependencies for Framework and Test Coverage
+        run: |
+          python -m pip install -r requirements.txt coverage pytest-cov
+      - name: Run Tests with Coverage
+        run: |
+          python -m pytest ./tests/ --cov=traffic_comparator --cov-report=xml --cov-branch
+      - name: Upload Coverage Report
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage.xml
