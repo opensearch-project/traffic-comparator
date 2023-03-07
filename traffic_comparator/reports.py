@@ -39,10 +39,14 @@ class BasicCorrectnessReport(BaseReport):
     def compute(self) -> None:
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.is_identical() for comp in self._response_comparisons])
+        self._statuses_identical = sum([comp.primary_response.statuscode == comp.shadow_response.statuscode
+                                        for comp in self._response_comparisons])
         if self._total_comparisons != 0:
             self._percent_matching = 1.0 * self._number_identical / self._total_comparisons
+            self._percent_statuses_matching = 1.0 * self._statuses_identical / self._total_comparisons
         else:
             self._percent_matching = 0
+            self._percent_statuses_matching = 0
         self._number_skipped = len(self._uncompared_requests)
         self._computed = True
 
@@ -51,9 +55,9 @@ class BasicCorrectnessReport(BaseReport):
             self.compute()
 
         return f"""
-    {self._total_comparisons} responses were compared.
-    {self._number_identical} were identical, for a match rate of {self._percent_matching}
-    {self._number_skipped} request(s) from the primary cluster were not matched with a request from the shadow cluster
+    {self._total_comparisons} response were compared.
+    {self._number_identical} were identical, for a match rate of {self._percent_matching:.2%}
+    The status codes matched in {self._percent_statuses_matching:.2%} of responses.
     """
 
     def export(self, output_file: IO) -> None:
@@ -97,9 +101,9 @@ class PerformanceReport(BaseReport):
         self._primary_latencies = []
         self._shadow_latencies = []
         for resp in self._response_comparisons:
-            if resp.primary_response.latency > 0:
+            if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
-            if resp.shadow_response.latency > 0:
+            if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
 
         self._computed = True
@@ -132,8 +136,9 @@ class PerformanceReport(BaseReport):
                          'primary_response_body', 'shadow_response_latency_ms', 'shadow_response_status_code',
                          'shadow_response_body'])
         for resp in self._response_comparisons:
-            writer.writerow([resp.original_request.uri, resp.original_request.http_method,
-                            resp.original_request.body,
+            writer.writerow([resp.original_request.uri if resp.original_request else None,
+                            resp.original_request.http_method if resp.original_request else None,
+                            resp.original_request.body if resp.original_request else None,
                             resp.primary_response.latency,
                             resp.primary_response.statuscode,
                             resp.primary_response.body,
