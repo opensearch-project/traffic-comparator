@@ -19,11 +19,15 @@ def cli():
     pass
 
 
+log_file_documentation = """Path to a log file. This option is required at least once and can be provided many times.
+If the file format has seperate primary and shadow logs,
+the first use should be the primary log and the second the shadow.
+"""
+
+
 @cli.command()
-@click.option("--primary-log-file", type=click.Path(), required=True,
-              help="Path to the log file from the primary cluster.")
-@click.option("--shadow-log-file", type=click.Path(), required=True,
-              help="Path to the log file from the shadow cluster.")
+@click.option("--log-file", "log_files", type=click.Path(), required=True, multiple=True,
+              help=log_file_documentation)
 @click.option("--log-file-format", type=str, required=True,
               help="Specification for the log file format (must be supported by a LogFileLoader).")
 @click.option("--display-reports", multiple=True,
@@ -31,14 +35,14 @@ def cli():
 @click.option("--export-reports", type=click.Tuple([str, click.File('w')]), multiple=True,
               help="A list of reports to export and the file path to export it to. This can be '-' for stdout.")
 @click.option('-v', '--verbose', count=True)
-def run(primary_log_file: Path, shadow_log_file: Path, log_file_format: str,
+def run(log_files: List[Path], log_file_format: str,
         display_reports: List[str], export_reports: List[Tuple[str, IO]], verbose: int):
     if verbose == 1:
-        logging.getLogger().setLevel(logging.INFO)
-    if verbose == 2:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
+    if verbose >= 2:
+        logging.basicConfig(level=logging.DEBUG)
 
-    data_loader = DataLoader(primary_log_file, shadow_log_file, log_file_format)
+    data_loader = DataLoader(log_files, log_file_format)
     analyzer = Analyzer(data_loader)
     report_generator = ReportGenerator(*analyzer.analyze())
 
