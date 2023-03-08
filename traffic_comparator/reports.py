@@ -38,7 +38,7 @@ class BasicCorrectnessReport(BaseReport):
     """
     def compute(self) -> None:
         self._total_comparisons = len(self._response_comparisons)
-        self._number_identical = sum([comp.is_identical() for comp in self._response_comparisons])
+        self._number_identical = sum([comp.are_identical() for comp in self._response_comparisons])
         self._statuses_identical = sum([comp.primary_response.statuscode == comp.shadow_response.statuscode
                                         for comp in self._response_comparisons])
         if self._total_comparisons != 0:
@@ -75,7 +75,7 @@ class BasicCorrectnessReport(BaseReport):
 
         # Write each non-matching comparison
         for comp in self._response_comparisons:
-            if comp.is_identical():
+            if comp.are_identical():
                 continue
             output_file.write('=' * 40)
             output_file.write("\n")

@@ -84,6 +84,11 @@ You can also get descriptions of the available reports with:
 trafficcomparator available-reports
 ```
 
+The traffic comparator currently has a built-in list of fields to "mask": they're ignored when comparing the results. That list can be seen [here](traffic_comparator/response_comparison.py#L13-L15). In the near future, it will be user-configurable. See [MIGRATIONS-863](https://opensearch.atlassian.net/browse/MIGRATIONS-863).
+
+Note that these fields will still be shown when the results are diffed in the detailed version of the BasicCorrectnessReport. That issue will be fixed in [MIGRATIONS-1013](https://opensearch.atlassian.net/browse/MIGRATIONS-1013).
+
+
 ## Working on the Traffic Comparator
 
 To install dev dependencies (e.g. flake8 and pytest):
