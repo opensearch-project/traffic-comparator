@@ -4,8 +4,8 @@ from typing import IO, List, Tuple
 
 import click
 
-from traffic_comparator.analyzer import Analyzer
-from traffic_comparator.data_loader import DataLoader
+from traffic_comparator.analyzer import Analyzer, StreamingAnalyzer
+from traffic_comparator.data_loader import DataLoader, StreamingDataLoader
 from traffic_comparator.report_generator import ReportGenerator
 
 
@@ -57,6 +57,15 @@ def run(log_files: List[Path], log_file_format: str,
         report_generator.generate(report, export=True, export_file=export_file)
         click.echo(f"{report} was exported to {export_file.name}")
 
+
+@cli.command()
+def stream():
+    # These set up the data_loader and analyzer to stream data
+    data_loader = StreamingDataLoader()
+    analyzer = StreamingAnalyzer(data_loader)
+
+    # This will start accepting stdin input and output to stdout.
+    analyzer.start()
 
 @cli.command()
 def available_reports():

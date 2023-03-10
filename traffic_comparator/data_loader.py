@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Tuple, Generator
 
-from traffic_comparator.data import RequestResponseStream
+from traffic_comparator.data import RequestResponseStream, RequestResponsePair
 from traffic_comparator.log_file_loader import (LogFileFormat,
                                                 UnknownLogFileFormatException,
                                                 getLogFileLoader)
@@ -37,3 +37,14 @@ class DataLoader:
     @property
     def shadow_data_stream(self) -> RequestResponseStream:
         return self._shadow_log_data
+
+
+class StreamingDataLoader:
+    def __init__(self) -> None:
+        self.log_file_format = LogFileFormat.REPLAYER_TRIPLES
+        self.log_loader = getLogFileLoader(self.log_file_format)
+
+    def next_input(self) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
+        loader = self.log_loader.load_from_stdin()
+        for line in loader:
+            yield line

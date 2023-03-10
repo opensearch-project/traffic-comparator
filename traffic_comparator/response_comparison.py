@@ -47,3 +47,13 @@ class ResponseComparison:
     def are_identical(self):
         logger.debug(f"Identical?: {self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}}")
         return self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}
+
+    def to_json(self):
+        base = {}
+        base["primary_response"] = self.primary_response.__dict__
+        base["shadow_response"] = self.shadow_response.__dict__
+        base["original_request"] = self.original_request.__dict__
+        base['_status_code_diff'] = self.status_code_diff.to_json()
+        base['_headers_diff'] = self.headers_diff.to_json()
+        base['_body_diff'] = self.body_diff.to_json()
+        return base
