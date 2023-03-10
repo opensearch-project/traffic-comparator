@@ -1,7 +1,6 @@
 import logging
 from typing import List, Tuple
 import json
-import sys
 
 from traffic_comparator.data import RequestResponseStream, RequestResponsePair
 from traffic_comparator.data_loader import DataLoader, StreamingDataLoader
@@ -51,4 +50,4 @@ class StreamingAnalyzer:
 
             print(json.dumps(comparison.to_json()), flush=True)
 
-        print(f"All inputs processed. Generated {len(self._comparisons)} comparisons.", file=sys.stderr)
+        logger.info(f"All inputs processed. Generated {len(self._comparisons)} comparisons.")

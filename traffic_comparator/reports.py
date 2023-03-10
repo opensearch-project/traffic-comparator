@@ -48,6 +48,7 @@ class BasicCorrectnessReport(BaseReport):
             self._percent_matching = 0
             self._percent_statuses_matching = 0
         self._number_skipped = len(self._uncompared_requests)
+
         self._computed = True
 
     def __str__(self) -> str:
@@ -105,7 +106,6 @@ class PerformanceReport(BaseReport):
                 self._primary_latencies.append(resp.primary_response.latency)
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
-
         self._computed = True
 
     def __str__(self) -> str:

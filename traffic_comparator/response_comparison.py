@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+import json
 
 from deepdiff import DeepDiff
 
@@ -57,3 +58,17 @@ class ResponseComparison:
         base['_headers_diff'] = self.headers_diff.to_json()
         base['_body_diff'] = self.body_diff.to_json()
         return base
+
+    @classmethod
+    def from_json(cls, line):
+        source_dict = json.loads(line)
+        original_request = Request(**source_dict["original_request"])
+        primary_response = Response(**source_dict["primary_response"])
+        shadow_response = Response(**source_dict["shadow_response"])
+
+        # TODO: currently, this re-runs the comparison. This is computationally redundant,
+        # but also, once we allow the user to specify masked fields, it will ignore those
+        # when re-running it.
+        # Options are to use cls.__new__ it instantiate an object without using the init method,
+        # or to refactor the init method to only optionally do the diff computation.
+        return cls(primary_response, shadow_response, original_request)

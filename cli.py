@@ -1,4 +1,5 @@
 import logging
+import sys
 from pathlib import Path
 from typing import IO, List, Tuple
 
@@ -6,7 +7,7 @@ import click
 
 from traffic_comparator.analyzer import Analyzer, StreamingAnalyzer
 from traffic_comparator.data_loader import DataLoader, StreamingDataLoader
-from traffic_comparator.report_generator import ReportGenerator
+from traffic_comparator.report_generator import ReportGenerator, StreamingReportGenerator
 
 
 # Click is a python library that streamlines creating command line interfaces
@@ -15,7 +16,13 @@ from traffic_comparator.report_generator import ReportGenerator
 # This line sets up a group of cli entrypoints -- currently the commands available
 # are `run` and `available_reports`.
 @click.group()
-def cli():
+@click.option('-v', '--verbose', count=True)
+def cli(verbose: int):
+    if verbose == 1:
+        logging.basicConfig(level=logging.INFO)
+    if verbose >= 2:
+        logging.basicConfig(level=logging.DEBUG)
+
     pass
 
 
@@ -34,14 +41,8 @@ the first use should be the primary log and the second the shadow.
               help="A list of reports that should be printed (in a summary form) to stdout.")
 @click.option("--export-reports", type=click.Tuple([str, click.File('w')]), multiple=True,
               help="A list of reports to export and the file path to export it to. This can be '-' for stdout.")
-@click.option('-v', '--verbose', count=True)
 def run(log_files: List[Path], log_file_format: str,
-        display_reports: List[str], export_reports: List[Tuple[str, IO]], verbose: int):
-    if verbose == 1:
-        logging.basicConfig(level=logging.INFO)
-    if verbose >= 2:
-        logging.basicConfig(level=logging.DEBUG)
-
+        display_reports: List[str], export_reports: List[Tuple[str, IO]]):
     data_loader = DataLoader(log_files, log_file_format)
     analyzer = Analyzer(data_loader)
     report_generator = ReportGenerator(*analyzer.analyze())
@@ -60,12 +61,24 @@ def run(log_files: List[Path], log_file_format: str,
 
 @cli.command()
 def stream():
-    # These set up the data_loader and analyzer to stream data
+    # These set up the data_loader and analyzer listen on stdin and process (compare) data whenever it arrives.
     data_loader = StreamingDataLoader()
     analyzer = StreamingAnalyzer(data_loader)
 
-    # This will start accepting stdin input and output to stdout.
+    # This will actually kick-off accepting stdin input and outputing comparison results to stdout.
     analyzer.start()
+
+
+@cli.command()
+def stream_report():
+    # The report generator will accept new lines (via `update`) and periodically update the display with
+    # the correctness and performance report stats.
+    report_generator = StreamingReportGenerator()
+    for line in sys.stdin:
+        report_generator.update(line)
+
+    report_generator.finalize()
+
 
 @cli.command()
 def available_reports():

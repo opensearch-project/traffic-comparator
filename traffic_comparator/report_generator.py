@@ -2,6 +2,7 @@ import inspect
 import logging
 import sys
 from typing import IO, Dict, List, Optional, Type
+from datetime import datetime, timedelta
 
 import traffic_comparator.reports
 from traffic_comparator.data import RequestResponsePair
@@ -65,3 +66,33 @@ class ReportGenerator:
             report.export(output_file=export_file)
         else:
             return str(report)
+
+
+class StreamingReportGenerator:
+    def __init__(self, display_update_period: timedelta = timedelta(minutes=1)) -> None:
+        self._data = []
+        self._display_update_period = display_update_period
+        self._display_last_updated: datetime = datetime.now()
+
+    def _is_time_to_update_display(self) -> bool:
+        return datetime.now() >= self._display_last_updated + self._display_update_period
+
+    def _display_stats(self, override_update=False) -> None:
+        if self._is_time_to_update_display() or override_update:
+            print("=" * 40)
+            print(f"as of {datetime.now()}:")
+
+            # TODO: this is entirely un-optimized -- it recomputes the reports each time we need them.
+            # For small-ish amounts of data, that's fine, but we should improve this down the road.
+            correctness_report = traffic_comparator.reports.BasicCorrectnessReport(self._data, [])
+            print(correctness_report)
+            performance_report = traffic_comparator.reports.PerformanceReport(self._data, [])
+            print(performance_report)
+            self._display_last_updated = datetime.now()
+
+    def update(self, line: str) -> None:
+        self._data.append(ResponseComparison.from_json(line))
+        self._display_stats()
+
+    def finalize(self) -> None:
+        self._display_stats(override_update=True)
