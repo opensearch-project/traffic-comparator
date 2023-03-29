@@ -8,6 +8,18 @@ from traffic_comparator.data import Request, Response
 
 logger = logging.getLogger(__name__)
 
+
+class InvalidJsonForLoadingComparisonException(Exception):
+    def __init__(self, original_exception) -> None:
+        super().__init__("A comparison JSON line could not be loaded as valid json. "
+                         f"Details: {str(original_exception)}")
+
+
+class MissingFieldForLoadingComparisonJsonException(Exception):
+    def __init__(self, field) -> None:
+        super().__init__("A comparison JSON line could not be loaded because of a missing {field} field. ")
+
+
 # These are volitaile or irrelevant paths that we want to ignore in our comparisons.
 # In a future task (MIGRATIONS-863), this will be made customizable by the user, but for
 # now, they're being hardcoded and will be updated as we test against new response types.
@@ -53,18 +65,36 @@ class ResponseComparison:
         base = {}
         base["primary_response"] = self.primary_response.__dict__
         base["shadow_response"] = self.shadow_response.__dict__
-        base["original_request"] = self.original_request.__dict__
-        base['_status_code_diff'] = self.status_code_diff.to_json()
-        base['_headers_diff'] = self.headers_diff.to_json()
-        base['_body_diff'] = self.body_diff.to_json()
+        base["original_request"] = self.original_request.__dict__ if self.original_request else {}
+        # DeepDiff offers a `to_json` that returns a json string, but we want to embed the actual dictionary object,
+        # not the string (otherwise it gets double escaped). DeepDiff objects do a have a `to_dict`, but it contains
+        # elements that aren't json-escapable.
+        base['_status_code_diff'] = json.loads(self.status_code_diff.to_json())
+        base['_headers_diff'] = json.loads(self.headers_diff.to_json())
+        base['_body_diff'] = json.loads(self.body_diff.to_json())
         return json.dumps(base)
 
     @classmethod
     def from_json(cls, line):
-        source_dict = json.loads(line)
-        original_request = Request(**source_dict["original_request"])
-        primary_response = Response(**source_dict["primary_response"])
-        shadow_response = Response(**source_dict["shadow_response"])
+        try:
+            source_dict = json.loads(line)
+        except json.JSONDecodeError as e:
+            raise InvalidJsonForLoadingComparisonException(e)
+        
+        if "original_request" in source_dict and source_dict["original_request"] != {}:
+            original_request = Request(**source_dict["original_request"])
+        else:
+            original_request = None
+
+        try:
+            primary_response = Response(**source_dict["primary_response"])
+        except KeyError:
+            raise MissingFieldForLoadingComparisonJsonException("primary_response")
+
+        try:
+            shadow_response = Response(**source_dict["shadow_response"])
+        except KeyError:
+            raise MissingFieldForLoadingComparisonJsonException("shadow_response")
 
         # TODO: currently, this re-runs the comparison. This is computationally redundant,
         # but also, once we allow the user to specify masked fields, it will ignore those

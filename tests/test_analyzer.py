@@ -53,9 +53,16 @@ COMPARISON_DICT = {
     'primary_response': PRIMARY_RESPONSE.__dict__,
     'shadow_response': SHADOW_RESPONSE.__dict__,
     'original_request': REQUEST.__dict__,
-    '_status_code_diff': '{"values_changed":{"root":{"new_value":201,"old_value":200}}}',
-    '_headers_diff': '{}',
-    '_body_diff': '{"values_changed":{"root[\'important_data\']":{"new_value":"Anything but hello world","old_value":"Hello, world"}}}'  # noqa: E501
+    '_status_code_diff': {"values_changed": {"root": {"new_value": 201, "old_value": 200}}},
+    '_headers_diff': {},
+    '_body_diff': {
+        "values_changed": {
+            "root['important_data']": {
+                "new_value": "Anything but hello world",
+                "old_value": "Hello, world"
+            }
+        }
+    }
 }
 
 
@@ -67,6 +74,6 @@ def test_WHEN_streaming_analyzer_given_reqres_pair_THEN_outputs_comparison(MockD
     # Initialize the analyzer
     analyzer = StreamingAnalyzer(MockDataLoader)
     analyzer.start()
-    assert len(analyzer._comparisons) == 1
+    assert analyzer._comparisons_count == 1
     captured = capsys.readouterr()
     assert json.loads(captured[0]) == COMPARISON_DICT

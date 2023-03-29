@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, TypeAlias, Union
+from typing import Optional, Union
+from collections import namedtuple
 
 
 @dataclass
@@ -42,4 +43,4 @@ class RequestResponsePair:
         return self.response.latency
 
 
-RequestResponseStream: TypeAlias = List[RequestResponsePair]
+MatchedRequestResponsePair = namedtuple('MatchedResponsePairs', ['primary', 'shadow'])

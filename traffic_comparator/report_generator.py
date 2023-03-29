@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 from typing import IO, Dict, Optional
 
 import traffic_comparator.reports
-from traffic_comparator.response_comparison import ResponseComparison
+from traffic_comparator.response_comparison import (
+    InvalidJsonForLoadingComparisonException,
+    MissingFieldForLoadingComparisonJsonException, ResponseComparison)
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +36,19 @@ class StreamingReportGenerator:
 
             # TODO: this is entirely un-optimized -- it recomputes the reports each time we need them.
             # For small-ish amounts of data, that's fine, but we should improve this down the road.
-            correctness_report = traffic_comparator.reports.BasicCorrectnessReport(self._data)
+            correctness_report = traffic_comparator.reports.DiffReport(self._data)
             print(correctness_report)
             performance_report = traffic_comparator.reports.PerformanceReport(self._data)
             print(performance_report, flush=True)
             self._display_last_updated = datetime.now()
 
     def update(self, line: str) -> None:
-        self._data.append(ResponseComparison.from_json(line))
+        try:
+            self._data.append(ResponseComparison.from_json(line))
+        except InvalidJsonForLoadingComparisonException as e:
+            logger.error(f"Comparison could not be loaded due to invalid json. Skipping line. Details: {e}")
+        except MissingFieldForLoadingComparisonJsonException as e:
+            logger.error(f"Comparison could not be loaded due to a missing field. Skipping line. Details: {e}")
         self._display_stats()
 
     def finalize(self) -> None:

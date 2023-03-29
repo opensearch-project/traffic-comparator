@@ -96,14 +96,16 @@ def test_WHEN_streamingdataloader_has_stdin_line_THEN_loads():
         for line in input_generator:
             line_count += 1
             assert len(line) == 2
-            assert type(line[0]) is RequestResponsePair
-            assert type(line[1]) is RequestResponsePair
-            assert id(line[0].corresponding_pair) == id(line[1])
-            assert id(line[1].corresponding_pair) == id(line[0])
-            assert line[0].request == LOG_ENTRY_REQUEST
-            assert line[0].response == LOG_ENTRY_PRIMARY_RESPONSE
-            assert line[1].request == LOG_ENTRY_REQUEST
-            assert line[1].response == LOG_ENTRY_SHADOW_RESPONSE
+            primary = line.primary
+            shadow = line.shadow
+            assert type(primary) is RequestResponsePair
+            assert type(shadow) is RequestResponsePair
+            assert id(primary.corresponding_pair) == id(shadow)
+            assert id(shadow.corresponding_pair) == id(primary)
+            assert primary.request == LOG_ENTRY_REQUEST
+            assert primary.response == LOG_ENTRY_PRIMARY_RESPONSE
+            assert shadow.request == LOG_ENTRY_REQUEST
+            assert shadow.response == LOG_ENTRY_SHADOW_RESPONSE
     assert line_count == 1
 
 
@@ -115,7 +117,7 @@ def test_WHEN_streamingdataloader_has_multiple_stdin_lines_THEN_loads_all():
         for line in input_generator:
             line_count += 1
             assert len(line) == 2
-            assert type(line[0]) is RequestResponsePair
-            assert type(line[1]) is RequestResponsePair
+            assert type(line.primary) is RequestResponsePair
+            assert type(line.shadow) is RequestResponsePair
 
     assert line_count == 10

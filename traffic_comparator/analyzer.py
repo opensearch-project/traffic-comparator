@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class StreamingAnalyzer:
     def __init__(self, dataLoader: StreamingDataLoader) -> None:
         self._data_loader = dataLoader
-        self._comparisons = []
+        self._comparisons_count = 0
 
     def start(self):
         data_loader_generator = self._data_loader.next_input()
@@ -17,8 +17,8 @@ class StreamingAnalyzer:
             comparison = ResponseComparison(primary.response, shadow.response, primary.request)
 
             # Is this step actually necessary? Do we care about keeping these locally?
-            self._comparisons.append(comparison)
+            self._comparisons_count += 1
 
             print(comparison.to_json(), flush=True)
 
-        logger.info(f"All inputs processed. Generated {len(self._comparisons)} comparisons.")
+        logger.info(f"All inputs processed. Generated {self._comparisons_count} comparisons.")

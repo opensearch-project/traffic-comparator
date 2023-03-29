@@ -31,7 +31,7 @@ class BaseReport(ABC):
         pass
 
 
-class BasicCorrectnessReport(BaseReport):
+class DiffReport(BaseReport):
     """Provides basic information on how many and what ratio of responses are succesfully matched.
     The exported file provides the same summary as the cli and then a list of diffs for every response
     that does not match.

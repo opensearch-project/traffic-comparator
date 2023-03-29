@@ -200,8 +200,8 @@ def test_WHEN_load_log_file_called_AND_valid_replayer_triples_THEN_returns_it(va
         for loaded_line in log_file_loader:
             # The line should have two elements
             assert len(loaded_line) == 2
-            primary = loaded_line[0]
-            shadow = loaded_line[1]
+            primary = loaded_line.primary
+            shadow = loaded_line.shadow
         
             # Each of them should point to the other as the corresponding entry
             assert id(primary.corresponding_pair) == id(shadow)
@@ -222,8 +222,8 @@ def test_WHEN_load_log_file_called_AND_valid_replayer_triples_AND_gzipped_respon
         for loaded_line in log_file_loader:
             # The line should have two elements
             assert len(loaded_line) == 2
-            primary = loaded_line[0]
-            shadow = loaded_line[1]
+            primary = loaded_line.primary
+            shadow = loaded_line.shadow
 
             # Each of them should point to the other as the corresponding entry
             assert id(primary.corresponding_pair) == id(shadow)

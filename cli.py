@@ -30,7 +30,7 @@ def stream():
     """Process streaming input and print comparisons to OUTPUT (defaults to stdout).
     
     Accept streaming input from stdin in the form of Replayer-generated triples, compare them and
-    ouptut (to stdout) json objects with a comparison of the primary and shadow responses."""
+    output (to stdout) json objects with a comparison of the primary and shadow responses."""
     # These set up the data_loader and analyzer listen on stdin and process (compare) data whenever it arrives.
     data_loader = StreamingDataLoader()
     analyzer = StreamingAnalyzer(data_loader)

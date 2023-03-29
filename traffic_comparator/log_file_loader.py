@@ -4,9 +4,9 @@ import sys
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Generator, List, Tuple, Type, Union
+from typing import Generator, List, Type, Union
 
-from traffic_comparator.data import Request, RequestResponsePair, Response
+from traffic_comparator.data import Request, RequestResponsePair, Response, MatchedRequestResponsePair
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class BaseLogFileLoader(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
+    def load(cls) -> Generator[MatchedRequestResponsePair, None, None]:
         pass
 
 
@@ -120,7 +120,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         return r
 
     @classmethod
-    def _parseLine(cls, line) -> Tuple[RequestResponsePair, RequestResponsePair]:
+    def _parseLine(cls, line) -> MatchedRequestResponsePair:
         item = json.loads(line)
 
         # If any of these objects are missing, it will throw an error and this log
@@ -136,10 +136,10 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
                                          corresponding_pair=primaryPair)
         primaryPair.corresponding_pair = shadowPair
 
-        return primaryPair, shadowPair
+        return MatchedRequestResponsePair(primary=primaryPair, shadow=shadowPair)
 
     @classmethod
-    def load(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
+    def load(cls) -> Generator[MatchedRequestResponsePair, None, None]:
         for line in sys.stdin:  # This line will wait indefinitely for input if there's no EOF
             try:
                 yield cls._parseLine(line)
