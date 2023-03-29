@@ -1,4 +1,5 @@
 import json
+from io import StringIO
 from unittest.mock import patch
 
 from traffic_comparator.analyzer import StreamingAnalyzer
@@ -72,8 +73,8 @@ def test_WHEN_streaming_analyzer_given_reqres_pair_THEN_outputs_comparison(MockD
     MockDataLoader.next_input = lambda: [(PRIMARY_PAIR, SHADOW_PAIR)]
 
     # Initialize the analyzer
-    analyzer = StreamingAnalyzer(MockDataLoader)
+    output_buffer = StringIO()
+    analyzer = StreamingAnalyzer(MockDataLoader, output_buffer)
     analyzer.start()
     assert analyzer._comparisons_count == 1
-    captured = capsys.readouterr()
-    assert json.loads(captured[0]) == COMPARISON_DICT
+    assert json.loads(output_buffer.getvalue()) == COMPARISON_DICT

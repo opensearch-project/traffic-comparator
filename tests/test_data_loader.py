@@ -89,35 +89,37 @@ def input(*lines):
 
 
 def test_WHEN_streamingdataloader_has_stdin_line_THEN_loads():
-    sdl = StreamingDataLoader()
-    with input(json.dumps(LOG_ENTRY)):
-        input_generator = sdl.next_input()
-        line_count = 0
-        for line in input_generator:
-            line_count += 1
-            assert len(line) == 2
-            primary = line.primary
-            shadow = line.shadow
-            assert type(primary) is RequestResponsePair
-            assert type(shadow) is RequestResponsePair
-            assert id(primary.corresponding_pair) == id(shadow)
-            assert id(shadow.corresponding_pair) == id(primary)
-            assert primary.request == LOG_ENTRY_REQUEST
-            assert primary.response == LOG_ENTRY_PRIMARY_RESPONSE
-            assert shadow.request == LOG_ENTRY_REQUEST
-            assert shadow.response == LOG_ENTRY_SHADOW_RESPONSE
+    input_buffer = StringIO(json.dumps(LOG_ENTRY))
+    
+    sdl = StreamingDataLoader(input_buffer)
+    input_generator = sdl.next_input()
+    line_count = 0
+    for line in input_generator:
+        line_count += 1
+        assert len(line) == 2
+        primary = line.primary
+        shadow = line.shadow
+        assert type(primary) is RequestResponsePair
+        assert type(shadow) is RequestResponsePair
+        assert id(primary.corresponding_pair) == id(shadow)
+        assert id(shadow.corresponding_pair) == id(primary)
+        assert primary.request == LOG_ENTRY_REQUEST
+        assert primary.response == LOG_ENTRY_PRIMARY_RESPONSE
+        assert shadow.request == LOG_ENTRY_REQUEST
+        assert shadow.response == LOG_ENTRY_SHADOW_RESPONSE
     assert line_count == 1
 
 
 def test_WHEN_streamingdataloader_has_multiple_stdin_lines_THEN_loads_all():
-    sdl = StreamingDataLoader()
-    with input(*map(json.dumps, [LOG_ENTRY] * 10)):
-        input_generator = sdl.next_input()
-        line_count = 0
-        for line in input_generator:
-            line_count += 1
-            assert len(line) == 2
-            assert type(line.primary) is RequestResponsePair
-            assert type(line.shadow) is RequestResponsePair
+    input_buffer = StringIO("\n".join(map(json.dumps, [LOG_ENTRY] * 10)))
+    
+    sdl = StreamingDataLoader(input_buffer)
+    input_generator = sdl.next_input()
+    line_count = 0
+    for line in input_generator:
+        line_count += 1
+        assert len(line) == 2
+        assert type(line.primary) is RequestResponsePair
+        assert type(line.shadow) is RequestResponsePair
 
     assert line_count == 10

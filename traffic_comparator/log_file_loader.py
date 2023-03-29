@@ -1,10 +1,9 @@
 import json
 import logging
-import sys
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Generator, List, Type, Union
+from typing import Generator, List, Type, Union, IO
 
 from traffic_comparator.data import Request, RequestResponsePair, Response, MatchedRequestResponsePair
 
@@ -34,7 +33,7 @@ class BaseLogFileLoader(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls) -> Generator[MatchedRequestResponsePair, None, None]:
+    def load(cls, input: IO) -> Generator[MatchedRequestResponsePair, None, None]:
         pass
 
 
@@ -139,8 +138,8 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         return MatchedRequestResponsePair(primary=primaryPair, shadow=shadowPair)
 
     @classmethod
-    def load(cls) -> Generator[MatchedRequestResponsePair, None, None]:
-        for line in sys.stdin:  # This line will wait indefinitely for input if there's no EOF
+    def load(cls, input: IO) -> Generator[MatchedRequestResponsePair, None, None]:
+        for line in input:  # This line will wait indefinitely for input if there's no EOF
             try:
                 yield cls._parseLine(line)
             except KeyError as e:

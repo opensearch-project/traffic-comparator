@@ -21,8 +21,9 @@ class UnsupportedReportTypeException(Exception):
 class StreamingReportGenerator:
     _available_reports = None
     
-    def __init__(self, display_update_period: timedelta = timedelta(minutes=1)) -> None:
+    def __init__(self, output: IO, display_update_period: timedelta = timedelta(minutes=1)) -> None:
         self._data = []
+        self._output = output
         self._display_update_period = display_update_period
         self._display_last_updated: datetime = datetime.now()
 
@@ -31,15 +32,15 @@ class StreamingReportGenerator:
 
     def _display_stats(self, override_update=False) -> None:
         if len(self._data) > 0 and (self._is_time_to_update_display() or override_update):
-            print("=" * 40)
-            print(f"as of {datetime.now()}:")
+            print("=" * 40, file=self._output)
+            print(f"as of {datetime.now()}:", file=self._output)
 
             # TODO: this is entirely un-optimized -- it recomputes the reports each time we need them.
             # For small-ish amounts of data, that's fine, but we should improve this down the road.
             correctness_report = traffic_comparator.reports.DiffReport(self._data)
-            print(correctness_report)
+            print(correctness_report, file=self._output)
             performance_report = traffic_comparator.reports.PerformanceReport(self._data)
-            print(performance_report, flush=True)
+            print(performance_report, flush=True, file=self._output)
             self._display_last_updated = datetime.now()
 
     def update(self, line: str) -> None:

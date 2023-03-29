@@ -32,8 +32,8 @@ def stream():
     Accept streaming input from stdin in the form of Replayer-generated triples, compare them and
     output (to stdout) json objects with a comparison of the primary and shadow responses."""
     # These set up the data_loader and analyzer listen on stdin and process (compare) data whenever it arrives.
-    data_loader = StreamingDataLoader()
-    analyzer = StreamingAnalyzer(data_loader)
+    data_loader = StreamingDataLoader(sys.stdin)
+    analyzer = StreamingAnalyzer(data_loader, sys.stdout)
 
     # This will actually kick-off accepting stdin input and outputing comparison results to stdout.
     analyzer.start()
@@ -51,7 +51,7 @@ def stream_report(export_reports: List[Tuple[str, IO]]):
     """
     # The report generator will accept new lines (via `update`) and periodically update the display with
     # the correctness and performance report stats.
-    report_generator = StreamingReportGenerator()
+    report_generator = StreamingReportGenerator(sys.stdout)
     for line in sys.stdin:
         report_generator.update(line)
 

@@ -174,7 +174,6 @@ def test_WHEN_responses_differ_on_masked_fields_THEN_comparison_suceeds():
     os_response = Response(headers={'content-length': 572},
                            body=MASKING_RESPONSE_BODY_2)
     response_comparison = ResponseComparison(es_response, os_response)
-    print(response_comparison.body_diff)
     assert response_comparison.status_code_diff == {}
     assert response_comparison.headers_diff == {}
     assert response_comparison.body_diff == {}
