@@ -1,13 +1,12 @@
 import logging
 import sys
-from pathlib import Path
 from typing import IO, List, Tuple
 
 import click
 
-from traffic_comparator.analyzer import Analyzer, StreamingAnalyzer
-from traffic_comparator.data_loader import DataLoader, StreamingDataLoader
-from traffic_comparator.report_generator import ReportGenerator, StreamingReportGenerator
+from traffic_comparator.analyzer import StreamingAnalyzer
+from traffic_comparator.data_loader import StreamingDataLoader
+from traffic_comparator.report_generator import StreamingReportGenerator
 
 
 # Click is a python library that streamlines creating command line interfaces
@@ -26,41 +25,12 @@ def cli(verbose: int):
     pass
 
 
-log_file_documentation = """Path to a log file. This option is required at least once and can be provided many times.
-If the file format has seperate primary and shadow logs,
-the first use should be the primary log and the second the shadow.
-"""
-
-
-@cli.command()
-@click.option("--log-file", "log_files", type=click.Path(), required=True, multiple=True,
-              help=log_file_documentation)
-@click.option("--log-file-format", type=str, required=True,
-              help="Specification for the log file format (must be supported by a LogFileLoader).")
-@click.option("--display-reports", multiple=True,
-              help="A list of reports that should be printed (in a summary form) to stdout.")
-@click.option("--export-reports", type=click.Tuple([str, click.File('w')]), multiple=True,
-              help="A list of reports to export and the file path to export it to. This can be '-' for stdout.")
-def run(log_files: List[Path], log_file_format: str,
-        display_reports: List[str], export_reports: List[Tuple[str, IO]]):
-    data_loader = DataLoader(log_files, log_file_format)
-    analyzer = Analyzer(data_loader)
-    report_generator = ReportGenerator(*analyzer.analyze())
-
-    # Print summary reports to stdout
-    for report in display_reports:
-        click.echo(f"{report}:\n")
-        click.echo(report_generator.generate(report))
-        click.echo()
-
-    # Write exported reports to file
-    for report, export_file in export_reports:
-        report_generator.generate(report, export=True, export_file=export_file)
-        click.echo(f"{report} was exported to {export_file.name}")
-
-
 @cli.command()
 def stream():
+    """Process streaming input and print comparisons to OUTPUT (defaults to stdout).
+    
+    Accept streaming input from stdin in the form of Replayer-generated triples, compare them and
+    ouptut (to stdout) json objects with a comparison of the primary and shadow responses."""
     # These set up the data_loader and analyzer listen on stdin and process (compare) data whenever it arrives.
     data_loader = StreamingDataLoader()
     analyzer = StreamingAnalyzer(data_loader)
@@ -69,8 +39,16 @@ def stream():
     analyzer.start()
 
 
+@click.option("--export-reports", type=click.Tuple([str, click.File('w')]), multiple=True,
+              help="A list of reports to export and the file path to export it to. This can be '-' for stdout.")
 @cli.command()
-def stream_report():
+def stream_report(export_reports: List[Tuple[str, IO]]):
+    """Process streaming comparisons and print summarized statistics to OUTPUT (defaults to stdout), and exports
+    specified reports to the files provided.
+    
+    Accept streaming input from stdin in the form of trafficreplayer comparisons, and compile statistics on the
+    correctness and performance. When the streaming input finishes, reports are also exported to the specified files.
+    """
     # The report generator will accept new lines (via `update`) and periodically update the display with
     # the correctness and performance report stats.
     report_generator = StreamingReportGenerator()
@@ -79,9 +57,13 @@ def stream_report():
 
     report_generator.finalize()
 
+    for report, export_file in export_reports:
+        report_generator.generate_final_report(report, export_file)
+        click.echo(f"{report} was exported to {export_file.name}")
+
 
 @cli.command()
 def available_reports():
-    reports = ReportGenerator.available_reports()
+    reports = StreamingReportGenerator.available_reports()
     for report, description in reports.items():
         click.echo(f"{report}: {description}")

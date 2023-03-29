@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from typing import List, IO
 import numpy as np
 from traffic_comparator.response_comparison import ResponseComparison
-from traffic_comparator.data import RequestResponsePair
 import csv
 
 
@@ -13,9 +12,8 @@ class BaseReport(ABC):
     of the report, as well as information on a potential outputted file (format, etc.) and any additional config
     or parameters to be provided.
     """
-    def __init__(self, response_comparisons: List[ResponseComparison], uncompared_requests: List[RequestResponsePair]):
+    def __init__(self, response_comparisons: List[ResponseComparison]):
         self._response_comparisons = response_comparisons
-        self._uncompared_requests = uncompared_requests
         self._computed = False
     
     @abstractmethod
@@ -47,7 +45,6 @@ class BasicCorrectnessReport(BaseReport):
         else:
             self._percent_matching = 0
             self._percent_statuses_matching = 0
-        self._number_skipped = len(self._uncompared_requests)
 
         self._computed = True
 

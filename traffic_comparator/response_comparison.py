@@ -49,7 +49,7 @@ class ResponseComparison:
         logger.debug(f"Identical?: {self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}}")
         return self.status_code_diff == {} and self.headers_diff == {} and self.body_diff == {}
 
-    def to_json(self):
+    def to_json(self) -> str:
         base = {}
         base["primary_response"] = self.primary_response.__dict__
         base["shadow_response"] = self.shadow_response.__dict__
@@ -57,7 +57,7 @@ class ResponseComparison:
         base['_status_code_diff'] = self.status_code_diff.to_json()
         base['_headers_diff'] = self.headers_diff.to_json()
         base['_body_diff'] = self.body_diff.to_json()
-        return base
+        return json.dumps(base)
 
     @classmethod
     def from_json(cls, line):

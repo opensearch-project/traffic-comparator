@@ -1,13 +1,12 @@
 import json
 import logging
+import sys
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Type, Union, List, Tuple, Generator
-import sys
+from typing import Generator, List, Tuple, Type, Union
 
-from traffic_comparator.data import (Request, RequestResponsePair,
-                                     RequestResponseStream, Response)
+from traffic_comparator.data import Request, RequestResponsePair, Response
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +32,9 @@ class BaseLogFileLoader(ABC):
     def __init__(self, log_file_paths: List[Path]) -> None:
         self.log_file_paths = log_file_paths
 
-    @abstractmethod
-    def load(self) -> Tuple[RequestResponseStream, RequestResponseStream]:
-        pass
-
     @classmethod
     @abstractmethod
-    def load_from_stdin(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
+    def load(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
         pass
 
 
@@ -50,7 +45,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
     One idiosyncracy (for the time being) is that the headers are not in a seperate object -- they're
     mixed in with the main fields and therefore should be considered whatever fields are left over
     when the known ones are removed.
-    
+
     {
       "request": {
         "Request-URI": XYZ,
@@ -128,7 +123,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
     def _parseLine(cls, line) -> Tuple[RequestResponsePair, RequestResponsePair]:
         item = json.loads(line)
 
-        # If any of these objects are missing, it will throw and error and this log file
+        # If any of these objects are missing, it will throw an error and this log
         # line will be skipped. The error is logged by the caller.
         requestdata = item['request']
         primaryResponseData = item['primaryResponse']
@@ -142,29 +137,14 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         primaryPair.corresponding_pair = shadowPair
 
         return primaryPair, shadowPair
-    
-    def load(self) -> Tuple[RequestResponseStream, RequestResponseStream]:
-        primaryPairs = []
-        shadowPairs = []
-        for file_path in self.log_file_paths:
-            with open(file_path) as log_file:
-                for i, line in enumerate(log_file):
-                    try:
-                        primaryPair, shadowPair = self._parseLine(line)
-                        if primaryPair:
-                            primaryPairs.append(primaryPair)
-                        if shadowPair:
-                            shadowPairs.append(shadowPair)
-                    except Exception as e:
-                        logger.info(f"An error was found on line {i} of {file_path} "
-                                    f"and the data could not be loaded. Details: {e}")
-            logger.info(f"Loaded {len(primaryPairs)} primary and {len(shadowPairs)} shadow pairs from {file_path}.")
-        return (primaryPairs, shadowPairs)
 
     @classmethod
-    def load_from_stdin(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
+    def load(cls) -> Generator[Tuple[RequestResponsePair, RequestResponsePair], None, None]:
         for line in sys.stdin:  # This line will wait indefinitely for input if there's no EOF
-            yield cls._parseLine(line)
+            try:
+                yield cls._parseLine(line)
+            except KeyError as e:
+                logger.debug(f"Log file line was skipped due to parsing error. {e}")
 
 
 LOG_FILE_LOADER_MAPPING: dict[LogFileFormat, Type[BaseLogFileLoader]] = {
