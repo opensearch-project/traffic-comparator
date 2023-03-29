@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional, Union, TypeAlias, List
+from typing import List, Optional, TypeAlias, Union
 
 
 @dataclass

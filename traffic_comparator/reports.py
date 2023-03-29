@@ -1,10 +1,12 @@
+import csv
 import difflib
 import json
 from abc import ABC, abstractmethod
-from typing import List, IO
+from typing import IO, List
+
 import numpy as np
+
 from traffic_comparator.response_comparison import ResponseComparison
-import csv
 
 
 class BaseReport(ABC):

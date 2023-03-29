@@ -1,5 +1,5 @@
-from traffic_comparator.response_comparison import ResponseComparison
 from traffic_comparator.data import Response
+from traffic_comparator.response_comparison import ResponseComparison
 
 RESPONSE_BODY_1 = {"hello": "world"}
 RESPONSE_BODY_2 = {"hello": "earth"}

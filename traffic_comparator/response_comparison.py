@@ -1,10 +1,10 @@
+import json
 import logging
 from typing import Optional
-import json
 
 from deepdiff import DeepDiff
 
-from traffic_comparator.data import Response, Request
+from traffic_comparator.data import Request, Response
 
 logger = logging.getLogger(__name__)
 
