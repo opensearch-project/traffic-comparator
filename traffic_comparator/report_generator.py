@@ -17,6 +17,8 @@ class UnsupportedReportTypeException(Exception):
 
 
 class StreamingReportGenerator:
+    _available_reports = None
+    
     def __init__(self, display_update_period: timedelta = timedelta(minutes=1)) -> None:
         self._data = []
         self._display_update_period = display_update_period
