@@ -1,5 +1,11 @@
-from traffic_comparator.response_comparison import ResponseComparison
+import json
+
+import pytest
+
 from traffic_comparator.data import Response
+from traffic_comparator.response_comparison import (
+    InvalidJsonForLoadingComparisonException,
+    MissingFieldForLoadingComparisonJsonException, ResponseComparison)
 
 RESPONSE_BODY_1 = {"hello": "world"}
 RESPONSE_BODY_2 = {"hello": "earth"}
@@ -87,6 +93,43 @@ def test_WHEN_status_code_missing_THEN_comparison_succeeds():
     assert response_comparison.body_diff == {}
 
 
+# Test the to-and-from JSON functionality
+FULL_RESPONSE_1 = Response(statuscode=200, headers=RESPONSE_HEADERS, body=RESPONSE_BODY_3)
+FULL_RESPONSE_2 = Response(statuscode=200, headers=RESPONSE_HEADERS, body=RESPONSE_BODY_4)
+FULL_RESPONSE_COMPARISON_JSON = """{"primary_response": {"timestamp": null, "statuscode": 200, "headers": "content-type: application/json; charset=UTF-8|content-length: 154", "body": {"hello": ["world", "earth"]}, "latency": null}, "shadow_response": {"timestamp": null, "statuscode": 200, "headers": "content-type: application/json; charset=UTF-8|content-length: 154", "body": {"hello": ["earth", "world"]}, "latency": null}, "original_request": {}, "_status_code_diff": {}, "_headers_diff": {}, "_body_diff": {"values_changed": {"root[\'hello\'][0]": {"new_value": "earth", "old_value": "world"}, "root[\'hello\'][1]": {"new_value": "world", "old_value": "earth"}}}}"""  # noqa: E501 -- ignore line length limit
+MISSING_PRIMARY_RESPONSE_COMPARISON_JSON = """{"shadow_response": {"timestamp": null, "statuscode": 200, "headers": "content-type: application/json; charset=UTF-8|content-length: 154", "body": {"hello": ["earth", "world"]}, "latency": null}, "original_request": {}, "_status_code_diff": {}, "_headers_diff": {}, "_body_diff": {"values_changed": {"root[\'hello\'][0]": {"new_value": "earth", "old_value": "world"}, "root[\'hello\'][1]": {"new_value": "world", "old_value": "earth"}}}}"""  # noqa: E501 -- ignore line length limit
+MISSING_SHADOW_RESPONSE_COMPARISON_JSON = """{"primary_response": {"timestamp": null, "statuscode": 200, "headers": "content-type: application/json; charset=UTF-8|content-length: 154", "body": {"hello": ["world", "earth"]}, "latency": null}, "original_request": {}, "_status_code_diff": {}, "_headers_diff": {}, "_body_diff": {"values_changed": {"root[\'hello\'][0]": {"new_value": "earth", "old_value": "world"}, "root[\'hello\'][1]": {"new_value": "world", "old_value": "earth"}}}}"""  # noqa: E501 -- ignore line length limit
+
+
+def test_WHEN_response_comparison_output_to_json_THEN_succeeds():
+    response_comparison = ResponseComparison(FULL_RESPONSE_1, FULL_RESPONSE_2)
+    assert not response_comparison.are_identical()
+
+    jsonified = response_comparison.to_json()
+    assert type(jsonified) is str
+    assert json.loads(jsonified) == json.loads(FULL_RESPONSE_COMPARISON_JSON)
+
+
+def test_WHEN_response_comparison_built_from_json_THEN_succeeds():
+    response_comparison_from_json = ResponseComparison.from_json(FULL_RESPONSE_COMPARISON_JSON)
+    assert response_comparison_from_json.__dict__ == ResponseComparison(FULL_RESPONSE_1, FULL_RESPONSE_2).__dict__
+
+
+def test_WHEN_response_comparison_built_from_invalid_json_THEN_fails():
+    with pytest.raises(InvalidJsonForLoadingComparisonException):
+        ResponseComparison.from_json(FULL_RESPONSE_COMPARISON_JSON[0:50])
+
+
+def test_WHEN_response_comparison_missing_primary_response_THEN_fails():
+    with pytest.raises(MissingFieldForLoadingComparisonJsonException):
+        ResponseComparison.from_json(MISSING_PRIMARY_RESPONSE_COMPARISON_JSON)
+
+
+def test_WHEN_response_comparison_missing_shadow_response_THEN_fails():
+    with pytest.raises(MissingFieldForLoadingComparisonJsonException):
+        ResponseComparison.from_json(MISSING_SHADOW_RESPONSE_COMPARISON_JSON)
+
+
 # Test the Masking Functionality
 MASKING_RESPONSE_BODY_1 = {
     'name': 'eosu1',
@@ -131,7 +174,6 @@ def test_WHEN_responses_differ_on_masked_fields_THEN_comparison_suceeds():
     os_response = Response(headers={'content-length': 572},
                            body=MASKING_RESPONSE_BODY_2)
     response_comparison = ResponseComparison(es_response, os_response)
-    print(response_comparison.body_diff)
     assert response_comparison.status_code_diff == {}
     assert response_comparison.headers_diff == {}
     assert response_comparison.body_diff == {}

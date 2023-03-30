@@ -3,10 +3,9 @@ import logging
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Type, Union, List, Tuple
+from typing import Generator, List, Type, Union, IO
 
-from traffic_comparator.data import (Request, RequestResponsePair,
-                                     RequestResponseStream, Response)
+from traffic_comparator.data import Request, RequestResponsePair, Response, MatchedRequestResponsePair
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +31,9 @@ class BaseLogFileLoader(ABC):
     def __init__(self, log_file_paths: List[Path]) -> None:
         self.log_file_paths = log_file_paths
 
+    @classmethod
     @abstractmethod
-    def load(self) -> Tuple[RequestResponseStream, RequestResponseStream]:
+    def load(cls, input: IO) -> Generator[MatchedRequestResponsePair, None, None]:
         pass
 
 
@@ -44,7 +44,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
     One idiosyncracy (for the time being) is that the headers are not in a seperate object -- they're
     mixed in with the main fields and therefore should be considered whatever fields are left over
     when the known ones are removed.
-    
+
     {
       "request": {
         "Request-URI": XYZ,
@@ -75,23 +75,25 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
     The body field contains a string which can be decoded as json (or an empty string).
     """
     ignored_fields = ["Reason-Phrase", "HTTP-Version"]
-    
-    def _parseBodyAsJson(self, rawbody: str) -> Union[dict, str, None]:
+
+    @classmethod
+    def _parseBodyAsJson(cls, rawbody: str) -> Union[dict, str, None]:
         try:
             return json.loads(rawbody)
         except json.JSONDecodeError:
             logger.debug(f"Response body could not be parsed as JSON: {rawbody}")
         return rawbody
 
-    def _parseResponse(self, responsedata) -> Response:
+    @classmethod
+    def _parseResponse(cls, responsedata) -> Response:
         r = Response()
         # Pull out known fields
-        r.body = self._parseBodyAsJson(responsedata.pop("body"))
+        r.body = cls._parseBodyAsJson(responsedata.pop("body"))
         r.latency = responsedata.pop("response_time_ms")
         r.statuscode = int(responsedata.pop("Status-Code"))
 
         # Discard unnecessary fields
-        for field in self.ignored_fields:
+        for field in cls.ignored_fields:
             if field in responsedata:
                 responsedata.pop(field)
 
@@ -99,15 +101,16 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         r.headers = responsedata
         return r
 
-    def _parseRequest(self, requestdata) -> Request:
+    @classmethod
+    def _parseRequest(cls, requestdata) -> Request:
         r = Request()
         # Pull out known fields
-        r.body = self._parseBodyAsJson(requestdata.pop("body"))
+        r.body = cls._parseBodyAsJson(requestdata.pop("body"))
         r.http_method = requestdata.pop("Method")
         r.uri = requestdata.pop("Request-URI")
 
         # Discard unnecessary fields
-        for field in self.ignored_fields:
+        for field in cls.ignored_fields:
             if field in requestdata:
                 requestdata.pop(field)
 
@@ -115,41 +118,32 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         r.headers = requestdata
         return r
 
-    def _parseLine(self, line) -> Tuple[RequestResponsePair, RequestResponsePair]:
+    @classmethod
+    def _parseLine(cls, line) -> MatchedRequestResponsePair:
         item = json.loads(line)
 
-        # If any of these objects are missing, it will throw and error and this log file
+        # If any of these objects are missing, it will throw an error and this log
         # line will be skipped. The error is logged by the caller.
         requestdata = item['request']
         primaryResponseData = item['primaryResponse']
         shadowResponseData = item['shadowResponse']
 
-        request = self._parseRequest(requestdata)
+        request = cls._parseRequest(requestdata)
 
-        primaryPair = RequestResponsePair(request, self._parseResponse(primaryResponseData))
-        shadowPair = RequestResponsePair(request, self._parseResponse(shadowResponseData),
+        primaryPair = RequestResponsePair(request, cls._parseResponse(primaryResponseData))
+        shadowPair = RequestResponsePair(request, cls._parseResponse(shadowResponseData),
                                          corresponding_pair=primaryPair)
         primaryPair.corresponding_pair = shadowPair
 
-        return primaryPair, shadowPair
-    
-    def load(self) -> Tuple[RequestResponseStream, RequestResponseStream]:
-        primaryPairs = []
-        shadowPairs = []
-        for file_path in self.log_file_paths:
-            with open(file_path) as log_file:
-                for i, line in enumerate(log_file):
-                    try:
-                        primaryPair, shadowPair = self._parseLine(line)
-                        if primaryPair:
-                            primaryPairs.append(primaryPair)
-                        if shadowPair:
-                            shadowPairs.append(shadowPair)
-                    except Exception as e:
-                        logger.info(f"An error was found on line {i} of {file_path} "
-                                    f"and the data could not be loaded. Details: {e}")
-            logger.info(f"Loaded {len(primaryPairs)} primary and {len(shadowPairs)} shadow pairs from {file_path}.")
-        return (primaryPairs, shadowPairs)
+        return MatchedRequestResponsePair(primary=primaryPair, shadow=shadowPair)
+
+    @classmethod
+    def load(cls, input: IO) -> Generator[MatchedRequestResponsePair, None, None]:
+        for line in input:  # This line will wait indefinitely for input if there's no EOF
+            try:
+                yield cls._parseLine(line)
+            except KeyError as e:
+                logger.debug(f"Log file line was skipped due to parsing error. {e}")
 
 
 LOG_FILE_LOADER_MAPPING: dict[LogFileFormat, Type[BaseLogFileLoader]] = {

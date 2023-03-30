@@ -1,11 +1,12 @@
+import csv
 import difflib
 import json
 from abc import ABC, abstractmethod
-from typing import List, IO
+from typing import IO, List
+
 import numpy as np
+
 from traffic_comparator.response_comparison import ResponseComparison
-from traffic_comparator.data import RequestResponsePair
-import csv
 
 
 class BaseReport(ABC):
@@ -13,9 +14,8 @@ class BaseReport(ABC):
     of the report, as well as information on a potential outputted file (format, etc.) and any additional config
     or parameters to be provided.
     """
-    def __init__(self, response_comparisons: List[ResponseComparison], uncompared_requests: List[RequestResponsePair]):
+    def __init__(self, response_comparisons: List[ResponseComparison]):
         self._response_comparisons = response_comparisons
-        self._uncompared_requests = uncompared_requests
         self._computed = False
     
     @abstractmethod
@@ -31,7 +31,7 @@ class BaseReport(ABC):
         pass
 
 
-class BasicCorrectnessReport(BaseReport):
+class DiffReport(BaseReport):
     """Provides basic information on how many and what ratio of responses are succesfully matched.
     The exported file provides the same summary as the cli and then a list of diffs for every response
     that does not match.
@@ -47,7 +47,7 @@ class BasicCorrectnessReport(BaseReport):
         else:
             self._percent_matching = 0
             self._percent_statuses_matching = 0
-        self._number_skipped = len(self._uncompared_requests)
+
         self._computed = True
 
     def __str__(self) -> str:
@@ -105,7 +105,6 @@ class PerformanceReport(BaseReport):
                 self._primary_latencies.append(resp.primary_response.latency)
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
-
         self._computed = True
 
     def __str__(self) -> str:

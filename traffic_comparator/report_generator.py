@@ -1,11 +1,13 @@
 import inspect
 import logging
 import sys
-from typing import IO, Dict, List, Optional, Type
+from datetime import datetime, timedelta
+from typing import IO, Dict, Optional
 
 import traffic_comparator.reports
-from traffic_comparator.data import RequestResponsePair
-from traffic_comparator.response_comparison import ResponseComparison
+from traffic_comparator.response_comparison import (
+    InvalidJsonForLoadingComparisonException,
+    MissingFieldForLoadingComparisonJsonException, ResponseComparison)
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +18,42 @@ class UnsupportedReportTypeException(Exception):
                          f"Details: {str(original_exception)}")
 
 
-class ReportGenerator:
-    _available_reports: Optional[Dict[str, Type[traffic_comparator.reports.BaseReport]]] = None
+class StreamingReportGenerator:
+    _available_reports = None
+    
+    def __init__(self, output: IO, display_update_period: timedelta = timedelta(minutes=1)) -> None:
+        self._data = []
+        self._output = output
+        self._display_update_period = display_update_period
+        self._display_last_updated: datetime = datetime.now()
 
-    def __init__(self, comparisons: List[ResponseComparison], uncompared_requests: List[RequestResponsePair]) -> None:
-        self._comparisons = comparisons
-        self._uncompared_requests = uncompared_requests
-        self._find_available_reports()
-        self._computed_reports = {}
+    def _is_time_to_update_display(self) -> bool:
+        return datetime.now() >= self._display_last_updated + self._display_update_period
+
+    def _display_stats(self, override_update=False) -> None:
+        if len(self._data) > 0 and (self._is_time_to_update_display() or override_update):
+            print("=" * 40, file=self._output)
+            print(f"as of {datetime.now()}:", file=self._output)
+
+            # TODO: this is entirely un-optimized -- it recomputes the reports each time we need them.
+            # For small-ish amounts of data, that's fine, but we should improve this down the road.
+            correctness_report = traffic_comparator.reports.DiffReport(self._data)
+            print(correctness_report, file=self._output)
+            performance_report = traffic_comparator.reports.PerformanceReport(self._data)
+            print(performance_report, flush=True, file=self._output)
+            self._display_last_updated = datetime.now()
+
+    def update(self, line: str) -> None:
+        try:
+            self._data.append(ResponseComparison.from_json(line))
+        except InvalidJsonForLoadingComparisonException as e:
+            logger.error(f"Comparison could not be loaded due to invalid json. Skipping line. Details: {e}")
+        except MissingFieldForLoadingComparisonJsonException as e:
+            logger.error(f"Comparison could not be loaded due to a missing field. Skipping line. Details: {e}")
+        self._display_stats()
+
+    def finalize(self) -> None:
+        self._display_stats(override_update=True)
 
     @classmethod
     def _find_available_reports(cls) -> None:
@@ -40,28 +70,20 @@ class ReportGenerator:
     def available_reports(cls) -> Dict[str, Optional[str]]:
         if cls._available_reports is None:
             cls._find_available_reports()
-
+            
         # This satisfies the type checker that we can move forward.
         assert cls._available_reports is not None
         return {name: report.__doc__ for name, report in cls._available_reports.items()}
 
-    def generate(self, report_name: str, export: bool = False, export_file: Optional[IO] = None):
-        if report_name in self._computed_reports:
-            report = self._computed_reports[report_name]
-        else:
-            if self._available_reports is None:
-                self._find_available_reports()
-            # This satisfies the type checker that we can move forward.
-            assert self._available_reports is not None
-            try:
-                report_class = self._available_reports[report_name]
-            except KeyError as e:
-                raise UnsupportedReportTypeException(report_name, e)
-            report = report_class(self._comparisons, self._uncompared_requests)
-            report.compute()
-            self._computed_reports[report_name] = report
+    def generate_final_report(self, report_name: str, export_file: IO):
+        self._find_available_reports()
+        # This satisfies the type checker that we can move forward.
+        assert self._available_reports is not None
+        try:
+            report_class = self._available_reports[report_name]
+        except KeyError as e:
+            raise UnsupportedReportTypeException(report_name, e)
         
-        if export and export_file:
-            report.export(output_file=export_file)
-        else:
-            return str(report)
+        report = report_class(self._data)
+        report.compute()
+        report.export(output_file=export_file)

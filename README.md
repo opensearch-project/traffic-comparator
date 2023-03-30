@@ -42,52 +42,134 @@ The `trafficcomparator` command is installed as a command on your machine (make 
 pip install --editable .
 ```
 
-Run the TC framework with the `trafficcomparator` command. It requires several command line options: the paths to the primary and shadow log files and the format of the log files. Optionally, you can specify a list of reports to display, and a list of reports to export to a file, followed by the file names for each export. See the documentation for more information:
+Run the TC framework with the `trafficcomparator` command.  It offers several entrypoints.
+
+For all commands, there's a verbosity option (`--verbose`, `-v` for info level and `-vv` for debug). Logs are printed to stderr, so they don't interfere with streaming via stdin and out.
+
+After the optional verbosity, there are 3 available commands:
+`available-reports`, `stream`, and `stream-reports`.
+
+Available-reports gives descriptions of the available reports:
 ```
-$ trafficcomparator run --help
+$ trafficcomparator available-reports
 
-Usage: trafficcomparator run [OPTIONS]
-
-Options:
-  --log-file PATH                 Path to a log file. This option is required
-                                  at least once and can be provided many
-                                  times. If the file format has seperate
-                                  primary and shadow logs, the first use
-                                  should be the primary log and the second the
-                                  shadow.  [required]
-  --log-file-format TEXT          Specification for the log file format (must
-                                  be supported by a LogFileLoader).
-                                  [required]
-  --display-reports TEXT          A list of reports that should be printed (in
-                                  a summary form) to stdout.
-  --export-reports <TEXT FILENAME>...
-                                  A list of reports to export and the file
-                                  path to export it to. This can be '-' for
-                                  stdout.
-  -v, --verbose
-  --help                          Show this message and exit.
+DiffReport: Provides basic information on how many and what ratio of responses are succesfully matched.
+    The exported file provides the same summary as the cli and then a list of diffs for every response
+    that does not match.
+    
+PerformanceReport: Provides basic performance data including: average, median, p90 and p99 latencies.
+    The exported file provides a CSV file which lists response body, latency and status code of both primary
+    and shadow cluster for to each request.
 ```
 
-For example:
-```
-$ trafficcomparator run --log-file test_primary_logs.log --log-file test_shadow_logs.log --log-file-format haproxy-jsons --display-reports BasicCorrectnessReport
-BasicCorrectnessReport:
+The next two commands are usually run together. `stream` handles accepting a stream of json-formatted "triples" from stdin. This is the output of the Replayer and is documented in detail in [log_file_loader.py](traffic_comparator/log_file_loader.py), but at a high level, it is json objects with a request, primary response, and shadow response. `stream` generates a comparison for each pair of responses and outputs a json-formatted version of that comparison to stdout.
 
-    5 responses were compared.
-    4 were identical, for a match rate of 0.8
-    1 request(s) from the primary cluster were not matched with a request from the shadow cluster
+`stream-report` accepts a stream of comparison objects from stdin and outputs to stdout an intermittent (every 1 minute, by default) summary report of correctness and performance statistics. When the stream ends, it outputs a final summary statistic, and then, for any reports specified as an export report, a detailed version to a file.
+
+An example of complete usage:
 
 ```
+$ cat mini_triples.log | trafficcomparator -v stream | trafficcomparator stream-report --export-reports DiffReport diffs.log
+INFO:traffic_comparator.analyzer:All inputs processed. Generated 10 comparisons.
+========================================
+as of 2023-03-28 23:00:55.362715:
 
-You can also get descriptions of the available reports with:
+    10 response were compared.
+    0 were identical, for a match rate of 0.00%
+    The status codes matched in 90.00% of responses.
+    
+
+            ==Stats for primary cluster==
+    99th percentile = 59.1
+    90th percentile = 51.0
+    50th percentile = 23.5
+    Average Latency = 28.2
+    
+            ==Stats for shadow cluster==
+    99th percentile = 309.8
+    90th percentile = 209.4
+    50th percentile = 121.0
+    Average Latency = 156.2
+    
+DiffReport was exported to diffs.log
 ```
-trafficcomparator available-reports
-```
+
+
+Note that the `-v` flag applies only to one instance of the command. If there were more comparisons and it had taken more than a minute to run, the summary would have been output multiple times.
 
 The traffic comparator currently has a built-in list of fields to "mask": they're ignored when comparing the results. That list can be seen [here](traffic_comparator/response_comparison.py#L13-L15). In the near future, it will be user-configurable. See [MIGRATIONS-863](https://opensearch.atlassian.net/browse/MIGRATIONS-863).
 
-Note that these fields will still be shown when the results are diffed in the detailed version of the BasicCorrectnessReport. That issue will be fixed in [MIGRATIONS-1013](https://opensearch.atlassian.net/browse/MIGRATIONS-1013).
+Note that these fields will still be shown when the results are diffed in the detailed version of the DiffReport. That issue will be fixed in [MIGRATIONS-1013](https://opensearch.atlassian.net/browse/MIGRATIONS-1013).
 
+
+### Details on output of `stream`
+The `stream` command generates comparison objects, which are passed to the reporting tool. You can use `tee` to capture these objects while they're being passed, like so:
+
+```
+$ cat mini_triples.log | trafficcomparator -v stream | tee comparisonResults.log | trafficcomparator stream-report --export-reports DiffReport diffs.log
+```
+
+The `comparisonResults.log` file will have one line for each comparison, and it will be a json object with the structure:
+```
+{
+  "primary_response": XYZ,
+  "shadow_reponse": XYZ,
+  "original_request": XYZ,
+  "_status_code_diff": {},
+  "_headers_diff": {},
+  "_body_diff": {}
+}
+```
+
+The `_item_diff` fields contain the diff for that item between the two responses, as generated by the [DeepDiff](https://zepworks.com/deepdiff/current/) library. For instance, the diff sections for one sample triple is:
+```
+{
+  "_status_code_diff": {},
+  "_headers_diff": {
+      "dictionary_item_added":
+      [
+          "root['access-control-allow-origin']",
+          "root['Connection']",
+          "root['Content-Length']",
+          "root['Date']",
+          "root['Content-Type']"
+      ],
+      "dictionary_item_removed":
+      [
+          "root['content-type']"
+      ]
+  },
+  "_body_diff": {
+      "dictionary_item_added":
+      [
+          "root['discovered_master']"
+      ],
+      "values_changed":
+      {
+          "root['number_of_nodes']":
+          {
+              "new_value": 3,
+              "old_value": 2
+          },
+          "root['number_of_data_nodes']":
+          {
+              "new_value": 3,
+              "old_value": 2
+          },
+          "root['active_primary_shards']":
+          {
+              "new_value": 11,
+              "old_value": 0
+          },
+          "root['active_shards']":
+          {
+              "new_value": 16,
+              "old_value": 0
+          }
+      }
+  }
+}
+```
 
 ## Working on the Traffic Comparator
 
@@ -95,6 +177,7 @@ To install dev dependencies (e.g. flake8 and pytest):
 ```
 pip install --editable ".[dev]"
 ```
+
 
 ### Run Unit Tests
 In this directory (you should see the `test` and `traffic_comparator` directories)

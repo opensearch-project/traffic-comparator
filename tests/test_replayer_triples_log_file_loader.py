@@ -1,9 +1,8 @@
 import json
+from io import StringIO
 
-import pytest
-
-from traffic_comparator.log_file_loader import ReplayerTriplesFileLoader
 from traffic_comparator.data import Request, Response
+from traffic_comparator.log_file_loader import ReplayerTriplesFileLoader
 
 LOG_ENTRY = {
     "request":
@@ -170,62 +169,46 @@ GZIP_LOG_ENTRY_SHADOW_RESPONSE = Response(
 )
 
 
-@pytest.fixture
-def valid_log_file(tmpdir):
-    log_file = tmpdir / "triple.json"
-    log_file.write(json.dumps(LOG_ENTRY))
-    return log_file
+VALID_LOG_FILE_STREAM = StringIO(json.dumps(LOG_ENTRY))
+GZIPPED_LOG_FILE_STREAM = StringIO(json.dumps(GZIP_LOG_ENTRY))
 
 
-@pytest.fixture
-def gzipped_log_file(tmpdir):
-    log_file = tmpdir / "gzip-triple.json"
-    log_file.write(json.dumps(GZIP_LOG_ENTRY))
-    return log_file
+def test_WHEN_load_log_file_called_AND_valid_replayer_triples_THEN_returns_it():
+    log_file_loader = ReplayerTriplesFileLoader.load(VALID_LOG_FILE_STREAM)
+    for loaded_line in log_file_loader:
+        # The line should have two elements
+        assert len(loaded_line) == 2
+        primary = loaded_line.primary
+        shadow = loaded_line.shadow
+    
+        # Each of them should point to the other as the corresponding entry
+        assert id(primary.corresponding_pair) == id(shadow)
+        assert id(shadow.corresponding_pair) == id(primary)
+
+        # The requests should be the same object.
+        assert primary.request == shadow.request
+        assert primary.request == LOG_ENTRY_REQUEST
+
+        assert primary.response == LOG_ENTRY_PRIMARY_RESPONSE
+        assert shadow.response == LOG_ENTRY_SHADOW_RESPONSE
 
 
-def test_WHEN_load_log_file_called_AND_valid_replayer_triples_THEN_returns_it(valid_log_file):
-    log_file_loader = ReplayerTriplesFileLoader([valid_log_file])
-    streams = log_file_loader.load()
-    assert len(streams) == 2  # a primary stream and a shadow stream
-    primaryStream = streams[0]
-    shadowStream = streams[1]
-
-    # Each of these should have one RequestResponsePair entry
-    assert len(primaryStream) == 1
-    assert len(shadowStream) == 1
-
-    # Each of them should point to the other as the corresponding entry
-    assert id(primaryStream[0].corresponding_pair) == id(shadowStream[0])
-    assert id(shadowStream[0].corresponding_pair) == id(primaryStream[0])
-
-    # The requests should be the same object.
-    assert primaryStream[0].request == shadowStream[0].request
-    assert primaryStream[0].request == LOG_ENTRY_REQUEST
-
-    assert primaryStream[0].response == LOG_ENTRY_PRIMARY_RESPONSE
-    assert shadowStream[0].response == LOG_ENTRY_SHADOW_RESPONSE
-
-
-def test_WHEN_load_log_file_called_AND_valid_replayer_triples_AND_gzipped_responses_THEN_returns_it(gzipped_log_file):
+def test_WHEN_load_log_file_called_AND_valid_replayer_triples_AND_gzipped_responses_THEN_returns_it():
     # In the future, we should uncompress the gzipped file, but for now, we just preserve it as a string.
-    log_file_loader = ReplayerTriplesFileLoader([gzipped_log_file])
-    streams = log_file_loader.load()
-    assert len(streams) == 2  # a primary stream and a shadow stream
-    primaryStream = streams[0]
-    shadowStream = streams[1]
+    log_file_loader = ReplayerTriplesFileLoader.load(GZIPPED_LOG_FILE_STREAM)
+    for loaded_line in log_file_loader:
+        # The line should have two elements
+        assert len(loaded_line) == 2
+        primary = loaded_line.primary
+        shadow = loaded_line.shadow
 
-    # Each of these should have one RequestResponsePair entry
-    assert len(primaryStream) == 1
-    assert len(shadowStream) == 1
+        # Each of them should point to the other as the corresponding entry
+        assert id(primary.corresponding_pair) == id(shadow)
+        assert id(shadow.corresponding_pair) == id(primary)
 
-    # Each of them should point to the other as the corresponding entry
-    assert id(primaryStream[0].corresponding_pair) == id(shadowStream[0])
-    assert id(shadowStream[0].corresponding_pair) == id(primaryStream[0])
+        # The requests should be the same object.
+        assert primary.request == shadow.request
+        assert primary.request == GZIP_LOG_ENTRY_REQUEST
 
-    # The requests should be the same object.
-    assert primaryStream[0].request == shadowStream[0].request
-    assert primaryStream[0].request == GZIP_LOG_ENTRY_REQUEST
-
-    assert primaryStream[0].response == GZIP_LOG_ENTRY_PRIMARY_RESPONSE
-    assert shadowStream[0].response == GZIP_LOG_ENTRY_SHADOW_RESPONSE
+        assert primary.response == GZIP_LOG_ENTRY_PRIMARY_RESPONSE
+        assert shadow.response == GZIP_LOG_ENTRY_SHADOW_RESPONSE
