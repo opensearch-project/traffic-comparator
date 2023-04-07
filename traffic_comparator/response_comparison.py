@@ -64,8 +64,14 @@ class ResponseComparison:
     def to_json(self) -> str:
         base = {}
         base["primary_response"] = self.primary_response.__dict__
+        if "raw_body" in base["primary_response"]:
+            del base["primary_response"]["raw_body"]
         base["shadow_response"] = self.shadow_response.__dict__
+        if "raw_body" in base["shadow_response"]:
+            del base["shadow_response"]["raw_body"]
         base["original_request"] = self.original_request.__dict__ if self.original_request else {}
+        if "raw_body" in base["original_request"]:
+            del base["original_request"]["raw_body"]
         # DeepDiff offers a `to_json` that returns a json string, but we want to embed the actual dictionary object,
         # not the string (otherwise it gets double escaped). DeepDiff objects do a have a `to_dict`, but it contains
         # elements that aren't json-escapable.
