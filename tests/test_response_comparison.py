@@ -1,3 +1,4 @@
+import base64
 import json
 
 import pytest
@@ -173,6 +174,22 @@ def test_WHEN_responses_differ_on_masked_fields_THEN_comparison_suceeds():
                            body=MASKING_RESPONSE_BODY_1)
     os_response = Response(headers={'content-length': 572},
                            body=MASKING_RESPONSE_BODY_2)
+    response_comparison = ResponseComparison(es_response, os_response)
+    assert response_comparison.status_code_diff == {}
+    assert response_comparison.headers_diff == {}
+    assert response_comparison.body_diff == {}
+    assert response_comparison.are_identical()
+
+
+def dictToBase64JsonBytes(d: dict) -> bytes:
+    return base64.b64encode(json.dumps(d).encode('utf-8'))
+
+
+def test_WHEN_responses_differ_on_header_case_THEN_comparison_suceeeds():
+    es_response = Response(headers={'content-type': 'application/json'},
+                           raw_body=dictToBase64JsonBytes(MASKING_RESPONSE_BODY_1))
+    os_response = Response(headers={'Content-Type': 'application/json'},
+                           raw_body=dictToBase64JsonBytes(MASKING_RESPONSE_BODY_1))
     response_comparison = ResponseComparison(es_response, os_response)
     assert response_comparison.status_code_diff == {}
     assert response_comparison.headers_diff == {}
