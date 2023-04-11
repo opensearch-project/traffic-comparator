@@ -14,8 +14,6 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### 🚞 Infrastructure
 
-* Add CHANGELOG.md and related workflows ([#2414](https://github.com/opensearch-project/OpenSearch-Dashboards/pull/2414))
-
 ### 📝 Documentation
 
 ### 🛠 Maintenance
@@ -24,4 +22,4 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### 🔩 Tests
 
-## [2.x]
+## [0.x]
