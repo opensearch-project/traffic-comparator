@@ -24,8 +24,9 @@ class MissingFieldForLoadingComparisonJsonException(Exception):
 # In a future task (MIGRATIONS-863), this will be made customizable by the user, but for
 # now, they're being hardcoded and will be updated as we test against new response types.
 BODY_PATHS_TO_IGNORE = ["root['cluster_name']", "root['cluster_uuid']", "root['name']", "root['took']",
-                        "root['tagline']", "root['version']"]
-HEADER_PATHS_TO_IGNORE = ["content-length"]
+                        "root['tagline']", "root['version']", "root['_id']", "root['_shards']", "root['_seq_no']"]
+HEADER_PATHS_TO_IGNORE = ["content-length", "access-control-allow-origin", "connection", "date",
+                          "location"]
 
 
 class ResponseComparison:
@@ -39,7 +40,7 @@ class ResponseComparison:
 
         # Depending on the performance of DeepDiff on large bodies, this could be pulled out to an async function.
         self._status_code_diff = DeepDiff(primary_response.statuscode, shadow_response.statuscode)
-        self._headers_diff = DeepDiff(primary_response.headers, shadow_response.headers,
+        self._headers_diff = DeepDiff(primary_response.headers, shadow_response.headers, ignore_string_case=True,
                                       exclude_paths=HEADER_PATHS_TO_IGNORE)
         self._body_diff = DeepDiff(primary_response.body, shadow_response.body,
                                    exclude_paths=BODY_PATHS_TO_IGNORE)
