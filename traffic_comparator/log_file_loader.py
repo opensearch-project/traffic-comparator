@@ -3,9 +3,10 @@ import logging
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Generator, List, Type, Union, IO
+from typing import IO, Generator, List, Type
 
-from traffic_comparator.data import Request, RequestResponsePair, Response, MatchedRequestResponsePair
+from traffic_comparator.data import (MatchedRequestResponsePair, Request,
+                                     RequestResponsePair, Response)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         "Request-URI": XYZ,
         "Method": XYZ,
         "HTTP-Version": XYZ
-        "body": XYZ,
+        "body": BASE_64_ENCODED_BYTES,
         "header-1": XYZ,
         "header-2": XYZ
 
@@ -60,7 +61,7 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         "Status-Code": ABC,
         "Reason-Phrase": ABC,
         "response_time_ms": 456, # milliseconds between the request and the response
-        "body": ABC,
+        "body": BASE_64_ENCODED_BYTES,
         "header-1": ABC
       },
       "shadowResponse": {
@@ -68,29 +69,22 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
         "Status-Code": ABC,
         "Reason-Phrase": ABC,
         "response_time_ms": 456, # milliseconds between the request and the response
-        "body": ABC,
+        "body": BASE_64_ENCODED_BYTES,
         "header-2": ABC
       }
     }
     The body field contains a string which can be decoded as json (or an empty string).
+
+    As of the latest revision, the body is stored as base64 encoded bytes.
     """
     ignored_fields = ["Reason-Phrase", "HTTP-Version"]
 
     @classmethod
-    def _parseBodyAsJson(cls, rawbody: str) -> Union[dict, str, None]:
-        try:
-            return json.loads(rawbody)
-        except json.JSONDecodeError:
-            logger.debug(f"Response body could not be parsed as JSON: {rawbody}")
-        return rawbody
-
-    @classmethod
     def _parseResponse(cls, responsedata) -> Response:
-        r = Response()
         # Pull out known fields
-        r.body = cls._parseBodyAsJson(responsedata.pop("body"))
-        r.latency = responsedata.pop("response_time_ms")
-        r.statuscode = int(responsedata.pop("Status-Code"))
+        raw_body = responsedata.pop("body").encode('utf-8)')
+        latency = responsedata.pop("response_time_ms")
+        statuscode = int(responsedata.pop("Status-Code"))
 
         # Discard unnecessary fields
         for field in cls.ignored_fields:
@@ -98,16 +92,15 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
                 responsedata.pop(field)
 
         # The remaining fields are headers
-        r.headers = responsedata
-        return r
+        headers = responsedata
+        return Response(statuscode=statuscode, headers=headers, raw_body=raw_body, latency=latency)
 
     @classmethod
     def _parseRequest(cls, requestdata) -> Request:
-        r = Request()
         # Pull out known fields
-        r.body = cls._parseBodyAsJson(requestdata.pop("body"))
-        r.http_method = requestdata.pop("Method")
-        r.uri = requestdata.pop("Request-URI")
+        raw_body = requestdata.pop("body").encode('utf-8')
+        http_method = requestdata.pop("Method")
+        uri = requestdata.pop("Request-URI")
 
         # Discard unnecessary fields
         for field in cls.ignored_fields:
@@ -115,8 +108,8 @@ class ReplayerTriplesFileLoader(BaseLogFileLoader):
                 requestdata.pop(field)
 
         # The remaining fields are headers
-        r.headers = requestdata
-        return r
+        headers = requestdata
+        return Request(http_method=http_method, uri=uri, headers=headers, raw_body=raw_body)
 
     @classmethod
     def _parseLine(cls, line) -> MatchedRequestResponsePair:

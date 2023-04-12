@@ -64,8 +64,17 @@ class ResponseComparison:
     def to_json(self) -> str:
         base = {}
         base["primary_response"] = self.primary_response.__dict__
+        if "raw_body" in base["primary_response"]:
+            assert base["primary_response"]["raw_body"] is None
+            del base["primary_response"]["raw_body"]
         base["shadow_response"] = self.shadow_response.__dict__
+        if "raw_body" in base["shadow_response"]:
+            assert base["shadow_response"]["raw_body"] is None
+            del base["shadow_response"]["raw_body"]
         base["original_request"] = self.original_request.__dict__ if self.original_request else {}
+        if "raw_body" in base["original_request"]:
+            assert base["original_request"]["raw_body"] is None
+            del base["original_request"]["raw_body"]
         # DeepDiff offers a `to_json` that returns a json string, but we want to embed the actual dictionary object,
         # not the string (otherwise it gets double escaped). DeepDiff objects do a have a `to_dict`, but it contains
         # elements that aren't json-escapable.
@@ -96,9 +105,12 @@ class ResponseComparison:
         except KeyError:
             raise MissingFieldForLoadingComparisonJsonException("shadow_response")
 
-        # TODO: currently, this re-runs the comparison. This is computationally redundant,
-        # but also, once we allow the user to specify masked fields, it will ignore those
-        # when re-running it.
-        # Options are to use cls.__new__ it instantiate an object without using the init method,
-        # or to refactor the init method to only optionally do the diff computation.
-        return cls(primary_response, shadow_response, original_request)
+        comparison = object.__new__(cls)
+        comparison.original_request = original_request
+        comparison.primary_response = primary_response
+        comparison.shadow_response = shadow_response
+        comparison._body_diff = source_dict['_body_diff']
+        comparison._headers_diff = source_dict['_headers_diff']
+        comparison._status_code_diff = source_dict['_status_code_diff']
+
+        return comparison

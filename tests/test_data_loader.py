@@ -1,3 +1,4 @@
+import base64
 import json
 from contextlib import contextmanager
 from io import StringIO
@@ -5,6 +6,11 @@ from unittest.mock import patch
 
 from traffic_comparator.data import Request, RequestResponsePair, Response
 from traffic_comparator.data_loader import StreamingDataLoader
+
+
+def toBase64String(s: str):
+    return base64.b64encode(s.encode('utf-8')).decode('utf-8')
+
 
 LOG_ENTRY = {
     "request":
@@ -22,7 +28,7 @@ LOG_ENTRY = {
         "HTTP-Version": "HTTP/1.1",
         "Reason-Phrase": "OK",
         "Status-Code": "200",
-        "body": "{\n  \"cluster_name\" : \"primary-cluster\",\n \"tagline\" : \"You Know, for Search\"\n}\n",  # noqa: E501
+        "body": toBase64String("{\n  \"cluster_name\" : \"primary-cluster\",\n \"tagline\" : \"You Know, for Search\"\n}\n"),  # noqa: E501
         "content-length": "549",
         "content-type": "application/json; charset=UTF-8",
         "response_time_ms": 14
@@ -34,7 +40,7 @@ LOG_ENTRY = {
         "response_time_ms": 199,
         "HTTP-Version": "HTTP/1.1",
         "Status-Code": "200",
-        "body": "{\n  \"cluster_name\" : \"elasticsearch\",\n  \"tagline\" : \"You Know, for Search\"\n}\n",  # noqa: E501
+        "body": toBase64String("{\n  \"cluster_name\" : \"elasticsearch\",\n  \"tagline\" : \"You Know, for Search\"\n}\n"),  # noqa: E501
         "Reason-Phrase": "OK"
     }
 }
