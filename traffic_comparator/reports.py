@@ -3,10 +3,13 @@ import difflib
 import json
 from abc import ABC, abstractmethod
 from typing import IO, List
+import logging
 
 import numpy as np
 
 from traffic_comparator.response_comparison import ResponseComparison
+
+logger = logging.getLogger(__name__)
 
 
 class BaseReport(ABC):
@@ -36,6 +39,26 @@ class DiffReport(BaseReport):
     The exported file provides the same summary as the cli and then a list of diffs for every response
     that does not match.
     """
+
+    # The following cleanup functions will remove the masked fields from the diff output
+    @staticmethod
+    def cleanup_body(response) -> None:
+        BODY_FIELDS_TO_IGNORE = ['cluster_name', 'cluster_uuid', 'name', 'took',
+                                 'tagline', 'version']
+        for field in BODY_FIELDS_TO_IGNORE:
+            if field in response.body:
+                logger.debug("Found a masked field, removing from the comparison now.")
+                response.body.pop(field, None)
+
+    @staticmethod
+    def cleanup_headers(response) -> None:
+        HEADER_FIELDS_TO_IGNORE = ['content-length']
+
+        for field in HEADER_FIELDS_TO_IGNORE:
+            if field in response.headers:
+                logger.debug("Found a masked field, removing from the comparison now.")
+                response.headers.pop(field, None)
+
     def compute(self) -> None:
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.are_identical() for comp in self._response_comparisons])
@@ -80,6 +103,15 @@ class DiffReport(BaseReport):
             output_file.write('=' * 40)
             output_file.write("\n")
             # Write each response to a json and split the lines (necessary input format for difflib)
+            if type(comp.primary_response.body) is dict:
+                self.cleanup_body(comp.primary_response)
+            if type(comp.primary_response.headers) is dict:
+                self.cleanup_headers(comp.primary_response)
+            if type(comp.shadow_response.body) is dict:
+                self.cleanup_body(comp.shadow_response)
+            if type(comp.shadow_response.headers) is dict:
+                self.cleanup_headers(comp.shadow_response)
+
             primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
                                       f"Headers: {comp.primary_response.headers}"] + \
                 json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
@@ -103,8 +135,13 @@ class PerformanceReport(BaseReport):
         for resp in self._response_comparisons:
             if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
+            elif resp.primary_response.latency:
+                logger.info("a non positive latency was found and will be excluded from the final performance stats")
+
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
+            elif resp.shadow_response.latency:
+                logger.info("a non positive latency was found and will be excluded from the final performance stats")
         self._computed = True
 
     def __str__(self) -> str:
