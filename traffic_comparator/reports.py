@@ -44,7 +44,7 @@ class DiffReport(BaseReport):
     @staticmethod
     def cleanup_body(response) -> None:
         BODY_FIELDS_TO_IGNORE = ['cluster_name', 'cluster_uuid', 'name', 'took',
-                                 'tagline', 'version']
+                                 'tagline', 'version', '_id', '_shards', '_seq_no']
         for field in BODY_FIELDS_TO_IGNORE:
             if field in response.body:
                 logger.debug("Found a masked field, removing from the comparison now.")
@@ -52,7 +52,8 @@ class DiffReport(BaseReport):
 
     @staticmethod
     def cleanup_headers(response) -> None:
-        HEADER_FIELDS_TO_IGNORE = ['content-length']
+        HEADER_FIELDS_TO_IGNORE = ['content-length', 'access-control-allow-origin', 'connection', 'date',
+                                   'location']
 
         for field in HEADER_FIELDS_TO_IGNORE:
             if field in response.headers:
