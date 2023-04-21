@@ -6,11 +6,21 @@ from typing import IO, List
 import logging
 
 import numpy as np
+import re
 
-from traffic_comparator.response_comparison import ResponseComparison
+from traffic_comparator.response_comparison import ResponseComparison, HEADER_PATHS_TO_IGNORE, BODY_PATHS_TO_IGNORE
 
 logger = logging.getLogger(__name__)
 
+PARSED_BODY_PATHS_TO_IGNORE = []
+
+# As we're importing the desired fields we want to mask from a different file, they need some parsing before they can
+# be removed from the visualization diff. Only because they're prefixed with the word: root
+
+for body in BODY_PATHS_TO_IGNORE:
+    result = re.search(r"root\[\'(.*)\'\]", body)
+    body = result.group(1)
+    PARSED_BODY_PATHS_TO_IGNORE.append(body)
 
 class BaseReport(ABC):
     """This is the base class for all reports. Each report should provide a docstring that explains the purpose
@@ -40,24 +50,22 @@ class DiffReport(BaseReport):
     that does not match.
     """
 
-    # The following cleanup functions will remove the masked fields from the diff output
+    # As we're comparing the responses from two clusters, the user can specify which fields they want masked, and there
+    # are some fields that will always be unique either way, so there's no point in showing them in the diff
+    # Visualization.
+    # The following cleanup functions will remove the masked fields from the diff output.
     @staticmethod
     def cleanup_body(response) -> None:
-        BODY_FIELDS_TO_IGNORE = ['cluster_name', 'cluster_uuid', 'name', 'took',
-                                 'tagline', 'version', '_id', '_shards', '_seq_no']
-        for field in BODY_FIELDS_TO_IGNORE:
+        for field in PARSED_BODY_PATHS_TO_IGNORE:
             if field in response.body:
-                logger.debug("Found a masked field, removing from the comparison now.")
+                logger.debug(f"Found a masked body field: {field}, removing from the diff visualization now.")
                 response.body.pop(field, None)
 
     @staticmethod
     def cleanup_headers(response) -> None:
-        HEADER_FIELDS_TO_IGNORE = ['content-length', 'access-control-allow-origin', 'connection', 'date',
-                                   'location']
-
-        for field in HEADER_FIELDS_TO_IGNORE:
+        for field in HEADER_PATHS_TO_IGNORE:
             if field in response.headers:
-                logger.debug("Found a masked field, removing from the comparison now.")
+                logger.debug(f"Found a masked header field: {field}, removing from the diff visualization now.")
                 response.headers.pop(field, None)
 
     def compute(self) -> None:
@@ -103,7 +111,7 @@ class DiffReport(BaseReport):
                 continue
             output_file.write('=' * 40)
             output_file.write("\n")
-            # Write each response to a json and split the lines (necessary input format for difflib)
+
             if type(comp.primary_response.body) is dict:
                 self.cleanup_body(comp.primary_response)
             if type(comp.primary_response.headers) is dict:
@@ -113,6 +121,7 @@ class DiffReport(BaseReport):
             if type(comp.shadow_response.headers) is dict:
                 self.cleanup_headers(comp.shadow_response)
 
+            # Write each response to a json and split the lines (necessary input format for difflib)
             primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
                                       f"Headers: {comp.primary_response.headers}"] + \
                 json.dumps(comp.primary_response.body, sort_keys=True, indent=4).splitlines()
