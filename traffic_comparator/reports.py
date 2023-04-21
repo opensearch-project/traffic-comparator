@@ -22,6 +22,7 @@ for body in BODY_PATHS_TO_IGNORE:
     body = result.group(1)
     PARSED_BODY_PATHS_TO_IGNORE.append(body)
 
+
 class BaseReport(ABC):
     """This is the base class for all reports. Each report should provide a docstring that explains the purpose
     of the report, as well as information on a potential outputted file (format, etc.) and any additional config
@@ -146,12 +147,18 @@ class PerformanceReport(BaseReport):
             if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
             elif resp.primary_response.latency:
-                logger.info("a non positive latency was found and will be excluded from the final performance stats")
+                logger.info(f"a non positive latency was found {resp.primary_response.latency} and will be excluded"
+                            f" from the final performance stats. The non positive latency stat belongs to a response "
+                            f"that occurred on the primary cluster after a request with the following body was made:"
+                            f" {str(resp.original_request.body)}")
 
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
             elif resp.shadow_response.latency:
-                logger.info("a non positive latency was found and will be excluded from the final performance stats")
+                logger.info(f"a non positive latency was found {resp.primary_response.latency} and will be excluded"
+                            f" from the final performance stats. The non positive latency stat belongs to a response "
+                            f"that occurred on the shadow cluster after a request with the following body was made:"
+                            f" {str(resp.original_request.body)}")
         self._computed = True
 
     def __str__(self) -> str:
