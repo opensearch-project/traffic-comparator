@@ -14,14 +14,6 @@ logger = logging.getLogger(__name__)
 
 PARSED_BODY_PATHS_TO_IGNORE = []
 
-# As we're importing the desired fields we want to mask from a different file, they need some parsing before they can
-# be removed from the visualization diff. Only because they're prefixed with the word: root
-
-for body in BODY_PATHS_TO_IGNORE:
-    result = re.search(r"root\[\'(.*)\'\]", body)
-    body = result.group(1)
-    PARSED_BODY_PATHS_TO_IGNORE.append(body)
-
 
 class BaseReport(ABC):
     """This is the base class for all reports. Each report should provide a docstring that explains the purpose
@@ -31,7 +23,7 @@ class BaseReport(ABC):
     def __init__(self, response_comparisons: List[ResponseComparison]):
         self._response_comparisons = response_comparisons
         self._computed = False
-    
+
     @abstractmethod
     def compute(self) -> None:
         pass
@@ -50,6 +42,15 @@ class DiffReport(BaseReport):
     The exported file provides the same summary as the cli and then a list of diffs for every response
     that does not match.
     """
+
+    # As we're importing the desired fields we want to mask from a different file, they need some parsing before they
+    # can be removed from the visualization diff. Only because they're prefixed with the word: root
+    @staticmethod
+    def parse_masked_fields() -> None:
+        for body in BODY_PATHS_TO_IGNORE:
+            result = re.search(r"root\[\'(.*)\'\]", body)
+            body = result.group(1)
+            PARSED_BODY_PATHS_TO_IGNORE.append(body)
 
     # As we're comparing the responses from two clusters, the user can specify which fields they want masked, and there
     # are some fields that will always be unique either way, so there's no point in showing them in the diff
@@ -70,6 +71,7 @@ class DiffReport(BaseReport):
                 response.headers.pop(field, None)
 
     def compute(self) -> None:
+        self.parse_masked_fields()
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.are_identical() for comp in self._response_comparisons])
         self._statuses_identical = sum([comp.primary_response.statuscode == comp.shadow_response.statuscode
@@ -147,18 +149,20 @@ class PerformanceReport(BaseReport):
             if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
             elif resp.primary_response.latency:
-                logger.info(f"a non positive latency was found {resp.primary_response.latency} and will be excluded"
+                logger.info(f"a non positive latency was found: {resp.primary_response.latency}, and will be excluded"
                             f" from the final performance stats. The non positive latency stat belongs to a response "
-                            f"that occurred on the primary cluster after a request with the following body was made:"
-                            f" {str(resp.original_request.body)}")
+                            f"that occurred on the primary cluster after a request with the following fields was made:"
+                            f" URI: {resp.original_request.uri}, Method: {resp.original_request.http_method},"
+                            f" Timestamp: {resp.original_request.timestamp}")
 
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
             elif resp.shadow_response.latency:
-                logger.info(f"a non positive latency was found {resp.primary_response.latency} and will be excluded"
+                logger.info(f"a non positive latency was found: {resp.primary_response.latency}, and will be excluded"
                             f" from the final performance stats. The non positive latency stat belongs to a response "
-                            f"that occurred on the shadow cluster after a request with the following body was made:"
-                            f" {str(resp.original_request.body)}")
+                            f"that occurred on the shadow cluster after a request with the following fields was made:"
+                            f" URI: {resp.original_request.uri}, Method: {resp.original_request.http_method},"
+                            f" Timestamp: {resp.original_request.timestamp}")
         self._computed = True
 
     def __str__(self) -> str:
