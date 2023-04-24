@@ -49,7 +49,8 @@ class DiffReport(BaseReport):
     def parse_masked_fields() -> None:
         for body in BODY_PATHS_TO_IGNORE:
             result = re.search(r"root\[\'(.*)\'\]", body)
-            body = result.group(1)
+            if result:
+                body = result.group(1)
             PARSED_BODY_PATHS_TO_IGNORE.append(body)
 
     # As we're comparing the responses from two clusters, the user can specify which fields they want masked, and there
