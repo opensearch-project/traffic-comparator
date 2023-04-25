@@ -3,10 +3,16 @@ import difflib
 import json
 from abc import ABC, abstractmethod
 from typing import IO, List
+import logging
 
 import numpy as np
+import re
 
-from traffic_comparator.response_comparison import ResponseComparison
+from traffic_comparator.response_comparison import ResponseComparison, HEADER_PATHS_TO_IGNORE, BODY_PATHS_TO_IGNORE
+
+logger = logging.getLogger(__name__)
+
+PARSED_BODY_PATHS_TO_IGNORE = []
 
 
 class BaseReport(ABC):
@@ -17,7 +23,7 @@ class BaseReport(ABC):
     def __init__(self, response_comparisons: List[ResponseComparison]):
         self._response_comparisons = response_comparisons
         self._computed = False
-    
+
     @abstractmethod
     def compute(self) -> None:
         pass
@@ -36,7 +42,37 @@ class DiffReport(BaseReport):
     The exported file provides the same summary as the cli and then a list of diffs for every response
     that does not match.
     """
+
+    # As we're importing the desired fields we want to mask from a different file, they need some parsing before they
+    # can be removed from the visualization diff. Only because they're prefixed with the word: root
+    @staticmethod
+    def parse_masked_fields() -> None:
+        for body in BODY_PATHS_TO_IGNORE:
+            result = re.search(r"root\[\'(.*)\'\]", body)
+            if result:
+                body = result.group(1)
+            PARSED_BODY_PATHS_TO_IGNORE.append(body)
+
+    # As we're comparing the responses from two clusters, the user can specify which fields they want masked, and there
+    # are some fields that will always be unique either way, so there's no point in showing them in the diff
+    # Visualization.
+    # The following cleanup functions will remove the masked fields from the diff output.
+    @staticmethod
+    def cleanup_body(response) -> None:
+        for field in PARSED_BODY_PATHS_TO_IGNORE:
+            if field in response.body:
+                logger.debug(f"Found a masked body field: {field}, removing from the diff visualization now.")
+                response.body.pop(field, None)
+
+    @staticmethod
+    def cleanup_headers(response) -> None:
+        for field in HEADER_PATHS_TO_IGNORE:
+            if field in response.headers:
+                logger.debug(f"Found a masked header field: {field}, removing from the diff visualization now.")
+                response.headers.pop(field, None)
+
     def compute(self) -> None:
+        self.parse_masked_fields()
         self._total_comparisons = len(self._response_comparisons)
         self._number_identical = sum([comp.are_identical() for comp in self._response_comparisons])
         self._statuses_identical = sum([comp.primary_response.statuscode == comp.shadow_response.statuscode
@@ -79,6 +115,16 @@ class DiffReport(BaseReport):
                 continue
             output_file.write('=' * 40)
             output_file.write("\n")
+
+            if type(comp.primary_response.body) is dict:
+                self.cleanup_body(comp.primary_response)
+            if type(comp.primary_response.headers) is dict:
+                self.cleanup_headers(comp.primary_response)
+            if type(comp.shadow_response.body) is dict:
+                self.cleanup_body(comp.shadow_response)
+            if type(comp.shadow_response.headers) is dict:
+                self.cleanup_headers(comp.shadow_response)
+
             # Write each response to a json and split the lines (necessary input format for difflib)
             primary_response_lines = [f"Status code: {comp.primary_response.statuscode}",
                                       f"Headers: {comp.primary_response.headers}"] + \
@@ -103,8 +149,21 @@ class PerformanceReport(BaseReport):
         for resp in self._response_comparisons:
             if resp.primary_response.latency and resp.primary_response.latency > 0:
                 self._primary_latencies.append(resp.primary_response.latency)
+            elif resp.primary_response.latency:
+                logger.info(f"a non positive latency was found: {resp.primary_response.latency}, and will be excluded"
+                            f" from the final performance stats. The non positive latency stat belongs to a response "
+                            f"that occurred on the primary cluster after a request with the following fields was made:"
+                            f" URI: {resp.original_request.uri}, Method: {resp.original_request.http_method},"
+                            f" Timestamp: {resp.original_request.timestamp}")
+
             if resp.shadow_response.latency and resp.shadow_response.latency > 0:
                 self._shadow_latencies.append(resp.shadow_response.latency)
+            elif resp.shadow_response.latency:
+                logger.info(f"a non positive latency was found: {resp.primary_response.latency}, and will be excluded"
+                            f" from the final performance stats. The non positive latency stat belongs to a response "
+                            f"that occurred on the shadow cluster after a request with the following fields was made:"
+                            f" URI: {resp.original_request.uri}, Method: {resp.original_request.http_method},"
+                            f" Timestamp: {resp.original_request.timestamp}")
         self._computed = True
 
     def __str__(self) -> str:
