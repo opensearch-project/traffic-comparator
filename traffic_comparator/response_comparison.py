@@ -40,7 +40,7 @@ class ResponseComparison:
 
         # Depending on the performance of DeepDiff on large bodies, this could be pulled out to an async function.
         self._status_code_diff = DeepDiff(primary_response.statuscode, shadow_response.statuscode)
-        self._headers_diff = DeepDiff(primary_response.headers, shadow_response.headers, ignore_string_case=True,
+        self._headers_diff = DeepDiff(primary_response.headers, shadow_response.headers,
                                       exclude_paths=HEADER_PATHS_TO_IGNORE)
         self._body_diff = DeepDiff(primary_response.body, shadow_response.body,
                                    exclude_paths=BODY_PATHS_TO_IGNORE)

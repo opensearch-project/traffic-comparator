@@ -121,7 +121,6 @@ class Response:
         self.raw_body = None
 
         # Process the headers to make all keys lower case, allowing for more consistent comparisons.
-        # TODO: Is this fair? does this every change behavior?
         self.headers = {k.lower(): v for k, v in self.headers.items()} if self.headers else None
 
 

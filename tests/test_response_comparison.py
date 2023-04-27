@@ -195,3 +195,9 @@ def test_WHEN_responses_differ_on_header_case_THEN_comparison_suceeeds():
     assert response_comparison.headers_diff == {}
     assert response_comparison.body_diff == {}
     assert response_comparison.are_identical()
+
+    # Currently the init function for a Response forcibly lowercases all header names.
+    # This changes the source of truth values, which is probably not what we want to do long-term.
+    # Leaving this assert in here as a reminder of this change.
+    # TODO: Preserve original casing for header names, while not flagging this as a comparison issue.
+    assert 'Content-Type' not in os_response.headers.keys()
