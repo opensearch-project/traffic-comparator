@@ -1,4 +1,5 @@
 import logging
+import pathlib
 import sys
 from typing import IO, List, Tuple
 
@@ -7,6 +8,7 @@ import click
 from traffic_comparator.analyzer import StreamingAnalyzer
 from traffic_comparator.data_loader import StreamingDataLoader
 from traffic_comparator.report_generator import StreamingReportGenerator
+from traffic_comparator.sqlite import SqliteDumper
 
 
 # Click is a python library that streamlines creating command line interfaces
@@ -60,6 +62,15 @@ def stream_report(export_reports: List[Tuple[str, IO]]):
     for report, export_file in export_reports:
         report_generator.generate_final_report(report, export_file)
         click.echo(f"{report} was exported to {export_file.name}")
+
+
+@cli.command()
+def dump_to_sqlite():
+    database_file = pathlib.Path('comparisons.db')
+    sqlite_dumper = SqliteDumper(database_file)
+    for line in sys.stdin:
+        sqlite_dumper.update(line)
+    sqlite_dumper.close()
 
 
 @cli.command()
