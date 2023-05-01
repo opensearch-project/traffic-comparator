@@ -120,6 +120,9 @@ class Response:
         self.body = parseBodyAsJson(decoded_body)  # Responses are never bulk calls
         self.raw_body = None
 
+        # Process the headers to make all keys lower case, allowing for more consistent comparisons.
+        self.headers = {k.lower(): v for k, v in self.headers.items()} if self.headers else None
+
 
 @dataclass
 class RequestResponsePair:
