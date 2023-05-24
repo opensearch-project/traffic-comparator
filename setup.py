@@ -12,9 +12,10 @@ setuptools.setup(
         "numpy"
     ],
     extras_require={
-        'dev': ['flake8', 'pytest']
+        'dev': ['flake8', 'pytest'],
+        'data': ['jupyter', 'pandas', 'matplotlib']
     },
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     entry_points={
         'console_scripts': [
             'trafficcomparator = cli:cli'
