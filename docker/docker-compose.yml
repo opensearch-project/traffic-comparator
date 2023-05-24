@@ -1,0 +1,18 @@
+version: '3'
+services:
+  traffic-comp-container:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-trafficcomparator
+    volumes:
+      - shared-volume:/shared
+  jupyter-container:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile-trafficcomparator-jupyter
+    ports:
+      - 8888:8888
+    volumes:
+      - shared-volume:/shared
+volumes:
+  shared-volume:

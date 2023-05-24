@@ -13,5 +13,4 @@ COPY docker/run_app.sh ./run_app.sh
 
 RUN pip3 install --editable .
 
-CMD ./run_app.sh
-
+CMD ./run_app.sh /shared/comparisons.db

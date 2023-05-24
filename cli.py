@@ -1,5 +1,4 @@
 import logging
-import pathlib
 import sys
 from typing import IO, List, Tuple
 
@@ -64,10 +63,11 @@ def stream_report(export_reports: List[Tuple[str, IO]]):
         click.echo(f"{report} was exported to {export_file.name}")
 
 
+@click.option('--db', type=click.Path(),
+              help="Path to the sqlite database to dump data (db file does not have to exist yet)")
 @cli.command()
-def dump_to_sqlite():
-    database_file = pathlib.Path('comparisons.db')
-    sqlite_dumper = SqliteDumper(database_file)
+def dump_to_sqlite(db):
+    sqlite_dumper = SqliteDumper(db)
     for line in sys.stdin:
         sqlite_dumper.update(line)
     sqlite_dumper.close()
