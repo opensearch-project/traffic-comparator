@@ -171,6 +171,23 @@ The `_item_diff` fields contain the diff for that item between the two responses
 }
 ```
 
+### Running in Docker
+There is also a docker file that sets up the traffic comparator and listens for incoming `triples`.
+It's set up in a slightly unorthodox way. Instead of copying the module files in and installing them
+while creating the image, that instead happens while running the container. This has the advantage of
+very quick editability, at the expense of more expensive container starts with more dependencies.
+
+To build the image:
+```
+cd <path_to_repo>
+docker build -t trafficcomparator docker
+```
+
+To run the image:
+```
+docker run -v <path_to_repo>:/traffic_comparator -p 9220:9220 -it trafficcomparator
+```
+
 ## Working on the Traffic Comparator
 
 To install dev dependencies (e.g. flake8 and pytest):
