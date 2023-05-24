@@ -1,6 +1,5 @@
 #!/bin/bash
 
-pip install -e .
 while true
 do
   nc -v -l -p 9220 | tee /dev/stderr | trafficcomparator -vv stream | trafficcomparator stream-report
