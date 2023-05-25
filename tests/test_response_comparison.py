@@ -1,3 +1,4 @@
+import base64
 import json
 
 import pytest
@@ -178,3 +179,25 @@ def test_WHEN_responses_differ_on_masked_fields_THEN_comparison_suceeds():
     assert response_comparison.headers_diff == {}
     assert response_comparison.body_diff == {}
     assert response_comparison.are_identical()
+
+
+def dictToBase64JsonBytes(d: dict) -> bytes:
+    return base64.b64encode(json.dumps(d).encode('utf-8'))
+
+
+def test_WHEN_responses_differ_on_header_case_THEN_comparison_suceeeds():
+    es_response = Response(headers={'content-type': 'application/json'},
+                           raw_body=dictToBase64JsonBytes(MASKING_RESPONSE_BODY_1))
+    os_response = Response(headers={'Content-Type': 'application/json'},
+                           raw_body=dictToBase64JsonBytes(MASKING_RESPONSE_BODY_1))
+    response_comparison = ResponseComparison(es_response, os_response)
+    assert response_comparison.status_code_diff == {}
+    assert response_comparison.headers_diff == {}
+    assert response_comparison.body_diff == {}
+    assert response_comparison.are_identical()
+
+    # Currently the init function for a Response forcibly lowercases all header names.
+    # This changes the source of truth values, which is probably not what we want to do long-term.
+    # Leaving this assert in here as a reminder of this change.
+    # TODO: Preserve original casing for header names, while not flagging this as a comparison issue.
+    assert 'Content-Type' not in os_response.headers.keys()
