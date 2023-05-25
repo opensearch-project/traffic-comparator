@@ -185,3 +185,13 @@ In this directory (you should see the `test` and `traffic_comparator` directorie
 ```
 pytest
 ```
+
+## Exploring Results in Jupyter Notebook/IPython
+
+Currently, comparison results can be reported in very high level reports (average latencies, percent of matching status codes), or in very low level detail (all line-by-line diffs output to a file). Neither of these formats are conducive to data exploration or visualization.
+
+Comparison results can also be dumped to a sqlite database, thereby allowing the comparison data to be visualized via a Jupyter Notebook or IPython terminal.
+
+It is possible to use either Jupyter notebooks (web-based UI to a local server that runs the python kernel) or in an IPython terminal (command line terminal with kernel running directly) to visualize comparison data. For a detailed walkthrough of the sample notebook, see [JupyterGuide.md](jupyterguide.md).
+If you know what you're doing, the results can be dumped to a sqlite database with `trafficcomparator dump-to-sqlite` and the Jupyter server can be started with `jupyter notebook`.
+
