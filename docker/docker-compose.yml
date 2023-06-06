@@ -4,6 +4,8 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile-trafficcomparator
+    ports:
+      - 9220:9220
     volumes:
       - shared-volume:/shared
   jupyter-container:
