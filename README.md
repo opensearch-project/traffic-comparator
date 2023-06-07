@@ -171,6 +171,15 @@ The `_item_diff` fields contain the diff for that item between the two responses
 }
 ```
 
+### Running in Docker
+There is also a pair of docker files that sets up the traffic comparator and the jupyter notebook server. The first container listens for incoming `triples`, stores them in a Sqlite database on a shared volume.
+
+To build and run the images:
+```
+cd <path_to_repo>
+docker-compose up
+```
+
 ## Working on the Traffic Comparator
 
 To install dev dependencies (e.g. flake8 and pytest):
