@@ -13,5 +13,10 @@ what maintainers do in this and other repos, and how they should be doing it. If
 | Kartik Ganesh      | [kartg](https://github.com/kartg)                       | Amazon      |
 | Tanner Lewis       | [lewijacn](https://github.com/lewijacn)                 | Amazon      |
 | Mikayla Thompson   | [mikaylathompson](https://github.com/mikaylathompson)   | Amazon      |
-| Omar Khasawneh     | [okhasawn](https://github.com/okhasawn)                 | Amazon      |
 | Brian Presley      | [sumobrian](https://github.com/sumobrian)               | Amazon      |
+
+## Emeritus
+
+| Maintainer         | GitHub ID                                               |
+| ------------------ | -------------------------------------------------------- |
+| Omar Khasawneh     | [okhasawn](https://github.com/okhasawn)                 |
